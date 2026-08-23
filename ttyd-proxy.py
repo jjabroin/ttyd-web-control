@@ -160,7 +160,6 @@ BODY_INJECT = """
 
 <div id="agl-bar">
   <div id="agl-ctrl-row">
-    <button class="agl-k" data-seq="AGL">agl</button>
     <button class="agl-k" data-seq="ENTER">Enter</button>
     <button class="agl-k" data-seq="TAB">Tab</button>
     <button class="agl-k" data-seq="ESC">Esc</button>
