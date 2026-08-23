@@ -119,15 +119,11 @@ def get_key():
                     if ch3 == 'D': return 'LEFT'
             else:
                 return 'QUIT'  # 단독 ESC는 종료
-        if ch == '\t': return 'REFRESH'  # Tab 키는 새로고침
+        if ch == '\t': return 'REFRESH'  # Tab: 새로고침
         if ch in ('\r', '\n'): return 'ENTER'
-        if ch in ('q', 'Q', '\x03'): return 'QUIT'
-        if ch in ('r', 'R'): return 'REFRESH'
+        if ch == '\x03': return 'QUIT'  # Ctrl+C
         # 숫자 키 지원 (1~9)
         if ch in '123456789': return ch
-        # w(위)/s(아래) 터치용 키 지원
-        if ch in ('w', 'W'): return 'UP'
-        if ch in ('s', 'S'): return 'DOWN'
         return ch
     finally:
         if old_settings:
@@ -211,7 +207,7 @@ def draw_menu(selected_idx, accounts, data_obj):
     count = len(accounts)
     print("\033[90m-----------------------------------------------------\033[0m")
     print(f" 💡 \033[1;33m[↑/↓]\033[0m 이동  |  \033[1;33m[숫자1~{count}]\033[0m 바로선택  |  \033[1;32m[Enter]\033[0m 실행")
-    print("    \033[1;35m[Tab/R]\033[0m 새로고침  |  \033[1;31m[Esc/Q]\033[0m 종료")
+    print("    \033[1;35m[Tab]\033[0m 새로고침  |  \033[1;31m[Esc]\033[0m 종료")
     print("\033[90m-----------------------------------------------------\033[0m")
 
 def run_account(acc):
