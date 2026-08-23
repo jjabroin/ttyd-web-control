@@ -192,20 +192,21 @@ BODY_INJECT = """
   .agl-modal-btn:active { background: #3f4450; }
   #agl-modal-textarea {
     flex: 1;
-    background: #14171c;
+    background: #101216;
     color: #e2e8f0;
     border: 1px solid #333842;
     border-radius: 8px;
-    padding: 12px;
-    font-size: 8px;
-    font-family: 'Menlo', monospace;
-    line-height: 1.45;
+    padding: 8px;
+    font-size: 6px;
+    font-family: 'Menlo', 'Monaco', monospace;
+    line-height: 1.2;
     resize: none;
     outline: none;
     -webkit-user-select: text !important;
     user-select: text !important;
-    white-space: pre-wrap;
-    word-break: break-all;
+    white-space: pre;
+    overflow: auto;
+    word-break: normal;
   }
 </style>
 
@@ -356,6 +357,69 @@ BODY_INJECT = """
     });
   });
 
+  // iOS 터치 스크롤: 천천히 움직이면 1줄씩, 빠르게 움직이면 속도에 비례해 여러 줄 전송
+  function initTouchScroll() {
+    var tc = document.getElementById('terminal-container');
+    if (!tc) return;
+    var startY = 0;
+    var lastY = 0;
+    var lastTime = 0;
+    var isTouching = false;
+    var accum = 0;
+    var ROW_PX = 20;
+
+    tc.addEventListener('touchstart', function(e) {
+      if (e.touches.length === 1) {
+        startY = e.touches[0].clientY;
+        lastY = startY;
+        lastTime = performance.now();
+        accum = 0;
+        isTouching = true;
+      }
+    }, { passive: true });
+
+    tc.addEventListener('touchmove', function(e) {
+      if (!isTouching || e.touches.length !== 1) return;
+      var currentY = e.touches[0].clientY;
+      var currentTime = performance.now();
+      var dy = lastY - currentY;
+      var dt = currentTime - lastTime || 16;
+
+      lastY = currentY;
+      lastTime = currentTime;
+      accum += dy;
+
+      if (Math.abs(accum) >= ROW_PX) {
+        var dir = accum > 0 ? 1 : -1;
+        var speed = Math.abs(dy) / dt;
+
+        var count = 1;
+        if (speed > 1.2) {
+          count = Math.min(Math.round(speed * 2), 5);
+        }
+
+        accum -= dir * ROW_PX;
+
+        var target = tc.querySelector('.xterm-screen') || tc;
+        for (var i = 0; i < count; i++) {
+          var ev = new WheelEvent('wheel', {
+            bubbles: true,
+            cancelable: true,
+            deltaY: dir * 100,
+            deltaMode: 0,
+            clientX: e.touches[0].clientX,
+            clientY: e.touches[0].clientY
+          });
+          target.dispatchEvent(ev);
+        }
+      }
+    }, { passive: true });
+
+    tc.addEventListener('touchend', function() { isTouching = false; accum = 0; }, { passive: true });
+    tc.addEventListener('touchcancel', function() { isTouching = false; accum = 0; }, { passive: true });
+  }
+  setTimeout(initTouchScroll, 500);
+
   // iOS 키보드 올라올 때 레이아웃 재조정
   function fixLayout() {
     var vv = window.visualViewport;
@@ -390,11 +454,22 @@ async def handle_input(request):
 
 
 async def handle_terminal_text(request):
-    """터미널 출력 텍스트 버퍼를 클린 텍스트로 반환"""
-    global terminal_buffer
-    raw_text = "".join(terminal_buffer)
-    cleaned = clean_ansi(raw_text)
-    return web.Response(status=200, text=cleaned, content_type='text/plain', charset='utf-8')
+    """현재 스크롤되어 화면에 보이는 터미널 화면(tmux visible pane)만 캡처하여 반환"""
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            '/usr/local/bin/tmux', 'capture-pane', '-p', '-t', 'agy',
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout, _ = await proc.communicate()
+        raw_text = stdout.decode('utf-8', errors='ignore')
+        lines = [line.rstrip() for line in raw_text.splitlines()]
+        while lines and not lines[-1]:
+            lines.pop()
+        cleaned = '\n'.join(lines)
+        return web.Response(status=200, text=cleaned, content_type='text/plain', charset='utf-8')
+    except Exception as e:
+        return web.Response(status=500, text=f"캡처 실패: {e}", content_type='text/plain', charset='utf-8')
 
 
 async def handle_kill_session(request):
