@@ -9,8 +9,8 @@ pkill -f "ttyd.*7682" 2>/dev/null
 pkill -f "ttyd-proxy.py" 2>/dev/null
 sleep 1
 
-# ttyd + tmux 자동 세션 복구 모드로 시작
-/usr/local/bin/ttyd -p 7682 --interface 127.0.0.1 -W -t fontSize=8 tmux new-session -A -s agy zsh &
+# ttyd + tmux 자동 세션 복구 모드로 시작 (DOM 렌더러로 텍스트 선택 지원)
+/usr/local/bin/ttyd -p 7682 --interface 127.0.0.1 -W -t fontSize=8 -t rendererType=dom tmux new-session -A -s agy zsh &
 sleep 2
 
 # 프록시 시작

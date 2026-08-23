@@ -63,8 +63,8 @@ HEAD_INJECT = """
     overflow: hidden !important;
   }
   .xterm, .xterm-screen, .xterm-viewport { width: 100% !important; }
-  /* 터미널 텍스트 선택 허용 */
-  .xterm, .xterm-screen, .xterm-viewport, .xterm-rows, .xterm-rows > div, .xterm-accessibility-tree {
+  /* DOM 렌더러 기반 텍스트 완벽 선택 허용 */
+  .xterm, .xterm-screen, .xterm-viewport, .xterm-rows, .xterm-rows > div, .xterm-rows span {
     user-select: text !important;
     -webkit-user-select: text !important;
     -webkit-touch-callout: default !important;
@@ -152,79 +152,10 @@ BODY_INJECT = """
   }
   #agl-send:active { background: #555; }
 
-  /* 텍스트 선택/복사 모달 */
-  #agl-modal {
-    display: none;
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(10,12,16,0.94);
-    z-index: 99999;
-    flex-direction: column;
-    padding: 14px;
-    box-sizing: border-box;
-  }
-  #agl-modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-  }
-  #agl-modal-title {
-    color: #cbd5e1;
-    font-size: 14px;
-    font-weight: 600;
-    font-family: 'Menlo', monospace;
-  }
-  #agl-modal-actions {
-    display: flex;
-    gap: 8px;
-  }
-  .agl-modal-btn {
-    background: #272a30;
-    color: #e2e8f0;
-    border: 1px solid #444a54;
-    border-radius: 6px;
-    padding: 6px 14px;
-    font-size: 13px;
-    cursor: pointer;
-    font-family: 'Menlo', monospace;
-  }
-  .agl-modal-btn:active { background: #3f4450; }
-  #agl-modal-textarea {
-    flex: 1;
-    background: #101216;
-    color: #e2e8f0;
-    border: 1px solid #333842;
-    border-radius: 8px;
-    padding: 8px;
-    font-size: 6px;
-    font-family: 'Menlo', 'Monaco', monospace;
-    line-height: 1.2;
-    resize: none;
-    outline: none;
-    -webkit-user-select: text !important;
-    user-select: text !important;
-    white-space: pre;
-    overflow: auto;
-    word-break: normal;
-  }
 </style>
-
-<!-- 텍스트 선택 모달 -->
-<div id="agl-modal">
-  <div id="agl-modal-header">
-    <span id="agl-modal-title">터미널 텍스트 선택 / 복사</span>
-    <div id="agl-modal-actions">
-      <button class="agl-modal-btn" id="agl-modal-copy-all" style="background:#273244;border-color:#3e4f6d;color:#93c5fd;font-weight:500;">📋 전체 복사</button>
-      <button class="agl-modal-btn" id="agl-modal-close" style="background:#3b2323;border-color:#5c3535;color:#fca5a5;">✕ 닫기</button>
-    </div>
-  </div>
-  <textarea id="agl-modal-textarea" readonly placeholder="터미널 내용 불러오는 중..."></textarea>
-</div>
 
 <div id="agl-bar">
   <div id="agl-ctrl-row">
-    <button class="agl-k" id="agl-open-modal">텍스트 선택</button>
     <button class="agl-k" data-seq="AGL">agl</button>
     <button class="agl-k" data-seq="ENTER">Enter</button>
     <button class="agl-k" data-seq="TAB">Tab</button>
@@ -250,63 +181,6 @@ BODY_INJECT = """
   var sendBtn = document.getElementById('agl-send');
   var input   = document.getElementById('agl-text');
   var dot     = document.getElementById('agl-dot');
-
-  // 모달 요소
-  var modal = document.getElementById('agl-modal');
-  var openModalBtn = document.getElementById('agl-open-modal');
-  var closeModalBtn = document.getElementById('agl-modal-close');
-  var copyAllBtn = document.getElementById('agl-modal-copy-all');
-  var modalTextarea = document.getElementById('agl-modal-textarea');
-
-  // 모달 열기 — 서버의 /terminal_text 엔드포인트에서 완벽한 텍스트 수신
-  if (openModalBtn) {
-    openModalBtn.addEventListener('click', function(e) {
-      e.preventDefault();
-      modalTextarea.value = '터미널 텍스트 불러오는 중...';
-      modal.style.display = 'flex';
-      
-      fetch('/terminal_text')
-        .then(function(r) { return r.text(); })
-        .then(function(text) {
-          modalTextarea.value = text || '(출력된 터미널 내용이 없습니다)';
-          setTimeout(function() {
-            modalTextarea.scrollTop = modalTextarea.scrollHeight;
-          }, 50);
-        })
-        .catch(function(err) {
-          modalTextarea.value = '텍스트 불러오기 실패: ' + err;
-        });
-    });
-  }
-
-  // 모달 닫기
-  if (closeModalBtn) {
-    closeModalBtn.addEventListener('click', function(e) {
-      e.preventDefault();
-      modal.style.display = 'none';
-    });
-  }
-
-  // 전체 복사 버튼
-  if (copyAllBtn) {
-    copyAllBtn.addEventListener('click', function(e) {
-      e.preventDefault();
-      modalTextarea.select();
-      modalTextarea.setSelectionRange(0, 99999);
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(modalTextarea.value).then(function() {
-          var orig = copyAllBtn.innerText;
-          copyAllBtn.innerText = '✓ 복사완료!';
-          setTimeout(function() { copyAllBtn.innerText = orig; }, 1200);
-        });
-      } else {
-        document.execCommand('copy');
-        var orig = copyAllBtn.innerText;
-        copyAllBtn.innerText = '✓ 복사완료!';
-        setTimeout(function() { copyAllBtn.innerText = orig; }, 1200);
-      }
-    });
-  }
 
   // /input 엔드포인트로 HTTP POST — 프록시가 ttyd WebSocket에 직접 주입
   function sendToProxy(text) {
@@ -357,24 +231,29 @@ BODY_INJECT = """
     });
   });
 
-  // iOS 터치 스크롤: 천천히 움직이면 1줄씩, 빠르게 움직이면 속도에 비례해 여러 줄 전송
+  // iOS 터치 스크롤: 스와이프 → tmux 스크롤 / 꾹 누르기 → 텍스트 선택
   function initTouchScroll() {
     var tc = document.getElementById('terminal-container');
     if (!tc) return;
     var startY = 0;
+    var startX = 0;
     var lastY = 0;
     var lastTime = 0;
     var isTouching = false;
+    var isScrolling = false;  // 스크롤 의도가 확인된 상태
     var accum = 0;
-    var ROW_PX = 20;
+    var ROW_PX = 18;
+    var SCROLL_THRESHOLD = 5; // px 이상 움직여야 스크롤로 판정
 
     tc.addEventListener('touchstart', function(e) {
       if (e.touches.length === 1) {
         startY = e.touches[0].clientY;
+        startX = e.touches[0].clientX;
         lastY = startY;
         lastTime = performance.now();
         accum = 0;
         isTouching = true;
+        isScrolling = false;
       }
     }, { passive: true });
 
@@ -384,6 +263,18 @@ BODY_INJECT = """
       var currentTime = performance.now();
       var dy = lastY - currentY;
       var dt = currentTime - lastTime || 16;
+      var totalDY = Math.abs(currentY - startY);
+      var totalDX = Math.abs(e.touches[0].clientX - startX);
+
+      // 수직 움직임이 수평보다 크고 임계값 초과 시 스크롤 모드
+      if (!isScrolling && totalDY > SCROLL_THRESHOLD && totalDY > totalDX) {
+        isScrolling = true;
+      }
+
+      if (!isScrolling) return;
+
+      // 스크롤 중에는 브라우저 텍스트 선택/페이지 스크롤 차단
+      e.preventDefault();
 
       lastY = currentY;
       lastTime = currentTime;
@@ -394,8 +285,8 @@ BODY_INJECT = """
         var speed = Math.abs(dy) / dt;
 
         var count = 1;
-        if (speed > 1.2) {
-          count = Math.min(Math.round(speed * 2), 5);
+        if (speed > 0.8) {
+          count = Math.min(Math.round(speed * 2.5), 8);
         }
 
         accum -= dir * ROW_PX;
@@ -413,10 +304,10 @@ BODY_INJECT = """
           target.dispatchEvent(ev);
         }
       }
-    }, { passive: true });
+    }, { passive: false }); // passive: false → preventDefault 가능
 
-    tc.addEventListener('touchend', function() { isTouching = false; accum = 0; }, { passive: true });
-    tc.addEventListener('touchcancel', function() { isTouching = false; accum = 0; }, { passive: true });
+    tc.addEventListener('touchend', function() { isTouching = false; isScrolling = false; accum = 0; }, { passive: true });
+    tc.addEventListener('touchcancel', function() { isTouching = false; isScrolling = false; accum = 0; }, { passive: true });
   }
   setTimeout(initTouchScroll, 500);
 
@@ -571,6 +462,27 @@ STATIC_FILES = {
 }
 
 
+async def handle_mouse_toggle(request):
+    """tmux 마우스 모드를 on/off 토글하고 현재 상태를 반환"""
+    try:
+        # 현재 상태 확인
+        proc = await asyncio.create_subprocess_exec(
+            '/usr/local/bin/tmux', 'show-option', '-g', 'mouse',
+            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+        )
+        stdout, _ = await proc.communicate()
+        current = stdout.decode().strip()  # e.g. "mouse on" or "mouse off"
+        new_state = 'off' if 'on' in current else 'on'
+        # 상태 전환
+        proc2 = await asyncio.create_subprocess_exec(
+            '/usr/local/bin/tmux', 'set-option', '-g', 'mouse', new_state
+        )
+        await proc2.wait()
+        return web.Response(status=200, text=new_state, content_type='text/plain')
+    except Exception as e:
+        return web.Response(status=500, text=str(e))
+
+
 async def router(request):
     if request.path in STATIC_FILES:
         filepath, ctype = STATIC_FILES[request.path]
@@ -581,6 +493,8 @@ async def router(request):
         return await handle_terminal_text(request)
     if request.path == '/kill_session':
         return await handle_kill_session(request)
+    if request.path == '/mouse_toggle':
+        return await handle_mouse_toggle(request)
     if request.headers.get('Upgrade', '').lower() == 'websocket':
         return await proxy_websocket(request)
     return await proxy_http(request)
