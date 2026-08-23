@@ -249,13 +249,21 @@ BODY_INJECT = """
     var ROW_PX = 15;
     var SCROLL_THRESHOLD = 8;
 
+    var moveHistory = []; // 최근 100ms 간의 터치 기록 저장 (정확한 방출 속도 계산)
+    var inertiaAnim = null;
+
     tc.addEventListener('touchstart', function(e) {
+      if (inertiaAnim) {
+        cancelAnimationFrame(inertiaAnim);
+        inertiaAnim = null;
+      }
       if (e.touches.length === 1) {
         startY = e.touches[0].clientY;
         startX = e.touches[0].clientX;
         lastY = startY;
         lastTime = performance.now();
         accum = 0;
+        moveHistory = [{ y: startY, t: lastTime }];
         isTouching = true;
         isScrolling = false;
       }
@@ -274,7 +282,6 @@ BODY_INJECT = """
       var currentY = e.touches[0].clientY;
       var currentTime = performance.now();
       var dy = lastY - currentY;
-      var dt = currentTime - lastTime || 16;
       var totalDY = Math.abs(currentY - startY);
       var totalDX = Math.abs(e.touches[0].clientX - startX);
 
@@ -290,21 +297,18 @@ BODY_INJECT = """
       lastTime = currentTime;
       accum += dy;
 
-      var ROW_STEP = 15; // 천천히 움직일 땐 15px당 1줄씩 정밀 이동
+      // 최근 100ms 내 터치 좌표 보관
+      moveHistory.push({ y: currentY, t: currentTime });
+      while (moveHistory.length > 0 && currentTime - moveHistory[0].t > 100) {
+        moveHistory.shift();
+      }
+
+      var ROW_STEP = 15; // 저속 1:1 정밀 이동 (15px당 1줄)
       if (Math.abs(accum) >= ROW_STEP) {
         var dir = accum > 0 ? 1 : -1;
         var count = Math.floor(Math.abs(accum) / ROW_STEP);
         accum -= dir * count * ROW_STEP;
 
-        // 속도 계산 (px/ms)
-        var speed = Math.abs(dy) / dt;
-        if (speed > 1.8) {
-          count = Math.min(count * 4, 12);
-        } else if (speed > 1.0) {
-          count = Math.min(count * 2, 6);
-        }
-
-        // ttyd xterm 스크린 요소 타깃팅
         var target = tc.querySelector('.xterm-screen') || tc;
         for (var i = 0; i < count; i++) {
           var ev = new WheelEvent('wheel', {
@@ -318,8 +322,78 @@ BODY_INJECT = """
       }
     }, { passive: false });
 
-    tc.addEventListener('touchend', function() { isTouching = false; isScrolling = false; accum = 0; }, { passive: true });
-    tc.addEventListener('touchcancel', function() { isTouching = false; isScrolling = false; accum = 0; }, { passive: true });
+    tc.addEventListener('touchend', function() {
+      isTouching = false;
+      isScrolling = false;
+      accum = 0;
+
+      var now = performance.now();
+      // 최근 100ms 동안의 실질 이동 속도 계산
+      while (moveHistory.length > 0 && now - moveHistory[0].t > 100) {
+        moveHistory.shift();
+      }
+
+      if (moveHistory.length >= 2) {
+        var oldest = moveHistory[0];
+        var newest = moveHistory[moveHistory.length - 1];
+        var dt = newest.t - oldest.t;
+        var dy = oldest.y - newest.y; // 위로 스와이프하면 양수
+        var releaseVelocity = dt > 0 ? (dy / dt) : 0; // px/ms
+
+        // 플릭(flick) 임계치 이상일 때만 관성 시작
+        if (Math.abs(releaseVelocity) > 0.35) {
+          var v = releaseVelocity * 14; // 초기 속도 스케일링
+          var friction = 0.945; // 자연스러운 부드러운 감속 계수
+          var inertiaAccum = 0;
+          var lastFrameTime = performance.now();
+          var target = tc.querySelector('.xterm-screen') || tc;
+
+          function stepInertia(frameTime) {
+            var frameDT = (frameTime - lastFrameTime) / 16.67;
+            lastFrameTime = frameTime;
+            if (frameDT > 3) frameDT = 1; // 탭 전환 등 지연 시 튐 방지
+
+            v *= Math.pow(friction, frameDT);
+            if (Math.abs(v) < 0.4) {
+              inertiaAnim = null;
+              return;
+            }
+
+            inertiaAccum += v * frameDT;
+            var INERTIA_STEP = 15;
+            if (Math.abs(inertiaAccum) >= INERTIA_STEP) {
+              var dir = inertiaAccum > 0 ? 1 : -1;
+              var count = Math.floor(Math.abs(inertiaAccum) / INERTIA_STEP);
+              inertiaAccum -= dir * count * INERTIA_STEP;
+
+              for (var i = 0; i < count; i++) {
+                var ev = new WheelEvent('wheel', {
+                  bubbles: true,
+                  cancelable: true,
+                  deltaY: dir * 100,
+                  deltaMode: 0
+                });
+                target.dispatchEvent(ev);
+              }
+            }
+            inertiaAnim = requestAnimationFrame(stepInertia);
+          }
+          inertiaAnim = requestAnimationFrame(stepInertia);
+        }
+      }
+      moveHistory = [];
+    }, { passive: true });
+
+    tc.addEventListener('touchcancel', function() {
+      isTouching = false;
+      isScrolling = false;
+      accum = 0;
+      moveHistory = [];
+      if (inertiaAnim) {
+        cancelAnimationFrame(inertiaAnim);
+        inertiaAnim = null;
+      }
+    }, { passive: true });
   }
   setTimeout(initTouchScroll, 500);
 
