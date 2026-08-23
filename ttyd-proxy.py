@@ -287,19 +287,21 @@ BODY_INJECT = """
       lastTime = currentTime;
       accum += dy;
 
-      if (Math.abs(accum) >= ROW_PX) {
+      var step = 10; // 10px마다 1줄
+      if (Math.abs(accum) >= step) {
         var dir = accum > 0 ? 1 : -1;
         var speed = Math.abs(dy) / dt;
 
-        var count = 1;
-        if (speed > 1.0) {
-          count = Math.min(Math.round(speed * 3), 10);
-        }
+        // 속도 가중치: 빠르게 스와이프할 때 추가 라인 부여
+        var mult = 1;
+        if (speed > 1.2) mult = 2;
+        if (speed > 2.0) mult = 3;
 
-        accum -= dir * ROW_PX;
+        var linesToScroll = Math.floor(Math.abs(accum) / step) * mult;
+        accum = accum % step;
 
         var target = tc.querySelector('.xterm-screen') || tc;
-        for (var i = 0; i < count; i++) {
+        for (var i = 0; i < linesToScroll; i++) {
           var ev = new WheelEvent('wheel', {
             bubbles: true,
             cancelable: true,
