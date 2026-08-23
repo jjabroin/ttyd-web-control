@@ -231,7 +231,7 @@ BODY_INJECT = """
     });
   });
 
-  // iOS 터치 스크롤: 스와이프 → tmux 스크롤 / 꾹 누르기 → 텍스트 선택
+  // iOS 터치 스크롤: 스와이프 → tmux 스크롤 / 텍스트 선택 중에는 스크롤 차단
   function initTouchScroll() {
     var tc = document.getElementById('terminal-container');
     if (!tc) return;
@@ -240,10 +240,10 @@ BODY_INJECT = """
     var lastY = 0;
     var lastTime = 0;
     var isTouching = false;
-    var isScrolling = false;  // 스크롤 의도가 확인된 상태
+    var isScrolling = false;
     var accum = 0;
-    var ROW_PX = 18;
-    var SCROLL_THRESHOLD = 5; // px 이상 움직여야 스크롤로 판정
+    var ROW_PX = 15;
+    var SCROLL_THRESHOLD = 8;
 
     tc.addEventListener('touchstart', function(e) {
       if (e.touches.length === 1) {
@@ -259,6 +259,14 @@ BODY_INJECT = """
 
     tc.addEventListener('touchmove', function(e) {
       if (!isTouching || e.touches.length !== 1) return;
+
+      // 이미 사용자가 텍스트를 드래그 선택 중인 경우 스크롤 이벤트 발생 차단
+      var sel = window.getSelection();
+      if (sel && sel.toString().length > 0) {
+        isScrolling = false;
+        return;
+      }
+
       var currentY = e.touches[0].clientY;
       var currentTime = performance.now();
       var dy = lastY - currentY;
@@ -266,14 +274,13 @@ BODY_INJECT = """
       var totalDY = Math.abs(currentY - startY);
       var totalDX = Math.abs(e.touches[0].clientX - startX);
 
-      // 수직 움직임이 수평보다 크고 임계값 초과 시 스크롤 모드
+      // 수직 움직임 판정
       if (!isScrolling && totalDY > SCROLL_THRESHOLD && totalDY > totalDX) {
         isScrolling = true;
       }
 
       if (!isScrolling) return;
 
-      // 스크롤 중에는 브라우저 텍스트 선택/페이지 스크롤 차단
       e.preventDefault();
 
       lastY = currentY;
@@ -285,8 +292,8 @@ BODY_INJECT = """
         var speed = Math.abs(dy) / dt;
 
         var count = 1;
-        if (speed > 0.8) {
-          count = Math.min(Math.round(speed * 2.5), 8);
+        if (speed > 1.0) {
+          count = Math.min(Math.round(speed * 3), 10);
         }
 
         accum -= dir * ROW_PX;
@@ -304,7 +311,7 @@ BODY_INJECT = """
           target.dispatchEvent(ev);
         }
       }
-    }, { passive: false }); // passive: false → preventDefault 가능
+    }, { passive: false });
 
     tc.addEventListener('touchend', function() { isTouching = false; isScrolling = false; accum = 0; }, { passive: true });
     tc.addEventListener('touchcancel', function() { isTouching = false; isScrolling = false; accum = 0; }, { passive: true });
