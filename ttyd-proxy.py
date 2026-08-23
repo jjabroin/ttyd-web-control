@@ -89,8 +89,8 @@ BODY_INJECT = """
   #agl-ctrl-grid {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    padding: 6px 10px 4px;
+    gap: 3px;
+    padding: 4px 8px 2px;
     user-select: none;
     -webkit-user-select: none;
   }
@@ -103,17 +103,17 @@ BODY_INJECT = """
   .agl-key-group {
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 4px;
   }
   .agl-k {
-    background: #2d2d2d;
+    background: #282828;
     color: #ccc;
-    border: 1px solid #444;
+    border: 1px solid #3e3e3e;
     border-radius: 4px;
     padding: 0;
-    width: 38px;
-    height: 32px;
-    font-size: 12px;
+    width: 30px;
+    height: 24px;
+    font-size: 11px;
     font-family: 'Menlo', monospace;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
@@ -123,18 +123,21 @@ BODY_INJECT = """
     justify-content: center;
   }
   .agl-k.wide {
-    width: 48px;
+    width: 40px;
+  }
+  .agl-k.extra-wide {
+    width: 54px; /* 탭 & 엔터 길게 */
   }
   .agl-k-spacer {
-    width: 38px;
-    height: 32px;
+    width: 30px;
+    height: 24px;
   }
-  .agl-k:active { background: #555; color: #fff; }
+  .agl-k:active { background: #505050; color: #fff; }
   #agl-input-row {
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 4px 8px 7px;
+    padding: 3px 8px 5px;
   }
   #agl-dot {
     width: 10px; height: 10px;
@@ -180,21 +183,21 @@ BODY_INJECT = """
 
 <div id="agl-bar">
   <div id="agl-ctrl-grid">
-    <!-- 윗줄: 왼쪽 [Esc] | 오른쪽 [Enter] [ ↑ ] [빈공간] -->
+    <!-- 윗줄: 왼쪽 [Esc] | 오른쪽 [Enter(길게)] [ ↑ ] [빈공간] -->
     <div class="agl-key-row">
       <div class="agl-key-group">
         <button class="agl-k wide" data-seq="ESC">Esc</button>
       </div>
       <div class="agl-key-group">
-        <button class="agl-k wide" data-seq="ENTER">Enter</button>
+        <button class="agl-k extra-wide" data-seq="ENTER">Enter</button>
         <button class="agl-k" data-seq="UP">↑</button>
         <div class="agl-k-spacer"></div>
       </div>
     </div>
-    <!-- 아랫줄: 왼쪽 [Tab] | 오른쪽 [ ← ] [ ↓ ] [ → ] -->
+    <!-- 아랫줄: 왼쪽 [Tab(길게)] | 오른쪽 [ ← ] [ ↓ ] [ → ] -->
     <div class="agl-key-row">
       <div class="agl-key-group">
-        <button class="agl-k wide" data-seq="TAB">Tab</button>
+        <button class="agl-k extra-wide" data-seq="TAB">Tab</button>
       </div>
       <div class="agl-key-group">
         <button class="agl-k" data-seq="LEFT">←</button>
