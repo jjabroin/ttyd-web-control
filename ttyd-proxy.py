@@ -351,11 +351,14 @@ BODY_INJECT = """
           function stepInertia(frameTime) {
             var frameDT = (frameTime - lastFrameTime) / 16.67;
             lastFrameTime = frameTime;
-            if (frameDT > 3) frameDT = 1; // 탭 전환 등 지연 시 튐 방지
+            if (frameDT > 3) frameDT = 1;
 
             v *= Math.pow(friction, frameDT);
-            if (Math.abs(v) < 0.4) {
+
+            // 속도가 일정 수준 이하로 떨어지면 즉시 관성 종료 & 잔여 누적값 버림 (꼬리 끌림/마지막 1줄 덜컹 방지)
+            if (Math.abs(v) < 1.2) {
               inertiaAnim = null;
+              inertiaAccum = 0;
               return;
             }
 
