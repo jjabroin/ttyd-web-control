@@ -88,6 +88,7 @@ BODY_INJECT = """
   }
   #agl-ctrl-row {
     display: flex;
+    justify-content: flex-end;
     gap: 5px;
     padding: 6px 10px 4px;
     overflow-x: auto;

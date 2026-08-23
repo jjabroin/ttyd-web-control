@@ -106,11 +106,20 @@ def get_key():
                 pass
         ch = sys.stdin.read(1)
         if ch == '\x1b':
-            ch2 = sys.stdin.read(1)
-            if ch2 == '[':
-                ch3 = sys.stdin.read(1)
-                if ch3 == 'A': return 'UP'
-                if ch3 == 'B': return 'DOWN'
+            # 0.05초 타임아웃으로 이스케이프 시퀀스(방향키 등)인지 단독 ESC인지 판별
+            import select
+            r, _, _ = select.select([sys.stdin], [], [], 0.05)
+            if r:
+                ch2 = sys.stdin.read(1)
+                if ch2 == '[':
+                    ch3 = sys.stdin.read(1)
+                    if ch3 == 'A': return 'UP'
+                    if ch3 == 'B': return 'DOWN'
+                    if ch3 == 'C': return 'RIGHT'
+                    if ch3 == 'D': return 'LEFT'
+            else:
+                return 'QUIT'  # 단독 ESC는 종료
+        if ch == '\t': return 'REFRESH'  # Tab 키는 새로고침
         if ch in ('\r', '\n'): return 'ENTER'
         if ch in ('q', 'Q', '\x03'): return 'QUIT'
         if ch in ('r', 'R'): return 'REFRESH'
@@ -202,7 +211,7 @@ def draw_menu(selected_idx, accounts, data_obj):
     count = len(accounts)
     print("\033[90m-----------------------------------------------------\033[0m")
     print(f" 💡 \033[1;33m[↑/↓]\033[0m 이동  |  \033[1;33m[숫자1~{count}]\033[0m 바로선택  |  \033[1;32m[Enter]\033[0m 실행")
-    print("    \033[1;35m[R]\033[0m 새로고침  |  \033[1;31m[Q]\033[0m 종료")
+    print("    \033[1;35m[Tab/R]\033[0m 새로고침  |  \033[1;31m[Esc/Q]\033[0m 종료")
     print("\033[90m-----------------------------------------------------\033[0m")
 
 def run_account(acc):
