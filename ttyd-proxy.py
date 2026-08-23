@@ -340,10 +340,10 @@ BODY_INJECT = """
         var dy = oldest.y - newest.y; // 위로 스와이프하면 양수
         var releaseVelocity = dt > 0 ? (dy / dt) : 0; // px/ms
 
-        // 빠른 플릭(flick) 제스처일 때만 시원하게 관성 발동
-        if (Math.abs(releaseVelocity) > 0.5) {
-          var v = releaseVelocity * 15;
-          var friction = 0.90; // 빠르고 깔끔하게 감속
+        // 플릭(flick) 시원하게 관성 발동
+        if (Math.abs(releaseVelocity) > 0.35) {
+          var v = releaseVelocity * 18;
+          var friction = 0.935; // 자연스럽고 넉넉하게 이어지는 감속
           var inertiaAccum = 0;
           var lastFrameTime = performance.now();
           var target = tc.querySelector('.xterm-screen') || tc;
@@ -355,8 +355,8 @@ BODY_INJECT = """
 
             v *= Math.pow(friction, frameDT);
 
-            // 속도가 프레임당 1줄 미만으로 느려지면(뚝뚝 끊기는 구간) 지체 없이 즉시 종료
-            if (Math.abs(v) < 3.5) {
+            // 적절한 시점에 부드럽게 컷오프 (뚝뚝 끊기지 않는 지점)
+            if (Math.abs(v) < 1.6) {
               inertiaAnim = null;
               inertiaAccum = 0;
               return;
