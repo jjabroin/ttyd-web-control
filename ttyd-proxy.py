@@ -62,7 +62,11 @@ HEAD_INJECT = """
     box-sizing: border-box !important;
     overflow: hidden !important;
   }
-  .xterm, .xterm-screen, .xterm-viewport { width: 100% !important; }
+  .xterm, .xterm-screen { width: 100% !important; }
+  .xterm-viewport {
+    width: 100% !important;
+    overflow-y: hidden !important; /* iOS Safari가 내부 viewport 스크롤 끝에 도달했을 때 제스처를 락킹하는 현상 방지 */
+  }
   /* DOM 렌더러 기반 텍스트 완벽 선택 허용 */
   .xterm, .xterm-screen, .xterm-viewport, .xterm-rows, .xterm-rows > div, .xterm-rows span {
     user-select: text !important;
@@ -260,7 +264,7 @@ BODY_INJECT = """
     tc.addEventListener('touchmove', function(e) {
       if (!isTouching || e.touches.length !== 1) return;
 
-      // 이미 사용자가 텍스트를 드래그 선택 중인 경우 스크롤 이벤트 발생 차단
+      // 텍스트 선택 영역이 잡혀있을 때만 스크롤 방지
       var sel = window.getSelection();
       if (sel && sel.toString().length > 0) {
         isScrolling = false;
@@ -270,11 +274,9 @@ BODY_INJECT = """
       var currentY = e.touches[0].clientY;
       var currentTime = performance.now();
       var dy = lastY - currentY;
-      var dt = currentTime - lastTime || 16;
       var totalDY = Math.abs(currentY - startY);
       var totalDX = Math.abs(e.touches[0].clientX - startX);
 
-      // 수직 움직임 판정
       if (!isScrolling && totalDY > SCROLL_THRESHOLD && totalDY > totalDX) {
         isScrolling = true;
       }
@@ -284,24 +286,22 @@ BODY_INJECT = """
       e.preventDefault();
 
       lastY = currentY;
-      lastTime = currentTime;
       accum += dy;
 
-      var ROW_STEP = 16; // 손가락으로 16px 밀 때마다 정확히 1줄 스크롤
+      var ROW_STEP = 14; // 터치 이동 14px당 1줄 정확히 스크롤
       if (Math.abs(accum) >= ROW_STEP) {
         var dir = accum > 0 ? 1 : -1;
         var count = Math.floor(Math.abs(accum) / ROW_STEP);
         accum -= dir * count * ROW_STEP;
 
+        // ttyd xterm 스크린 요소 타깃팅
         var target = tc.querySelector('.xterm-screen') || tc;
         for (var i = 0; i < count; i++) {
           var ev = new WheelEvent('wheel', {
             bubbles: true,
             cancelable: true,
             deltaY: dir * 100,
-            deltaMode: 0,
-            clientX: e.touches[0].clientX,
-            clientY: e.touches[0].clientY
+            deltaMode: 0
           });
           target.dispatchEvent(ev);
         }
