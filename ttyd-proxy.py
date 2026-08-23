@@ -355,8 +355,8 @@ BODY_INJECT = """
 
             v *= Math.pow(friction, frameDT);
 
-            // 적절한 시점에 부드럽게 컷오프 (뚝뚝 끊기지 않는 지점)
-            if (Math.abs(v) < 1.6) {
+            // 1.8 미만 속도에서 깔끔하게 정지
+            if (Math.abs(v) < 1.8) {
               inertiaAnim = null;
               inertiaAccum = 0;
               return;
