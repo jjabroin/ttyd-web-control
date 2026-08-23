@@ -86,36 +86,55 @@ BODY_INJECT = """
     padding-bottom: env(safe-area-inset-bottom, 0px);
     width: 100%;
   }
-  #agl-ctrl-row {
+  #agl-ctrl-grid {
     display: flex;
-    justify-content: flex-end;
-    gap: 5px;
+    flex-direction: column;
+    gap: 4px;
     padding: 6px 10px 4px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
+    user-select: none;
+    -webkit-user-select: none;
   }
-  #agl-ctrl-row::-webkit-scrollbar { display: none; }
+  .agl-key-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+  }
+  .agl-key-group {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
   .agl-k {
-    flex-shrink: 0;
     background: #2d2d2d;
     color: #ccc;
     border: 1px solid #444;
     border-radius: 4px;
-    padding: 5px 9px;
+    padding: 0;
+    width: 38px;
+    height: 32px;
     font-size: 12px;
     font-family: 'Menlo', monospace;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
     user-select: none;
-    min-height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .agl-k.wide {
+    width: 48px;
+  }
+  .agl-k-spacer {
+    width: 38px;
+    height: 32px;
   }
   .agl-k:active { background: #555; color: #fff; }
   #agl-input-row {
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 5px 8px 7px;
+    padding: 4px 8px 7px;
   }
   #agl-dot {
     width: 10px; height: 10px;
@@ -160,14 +179,29 @@ BODY_INJECT = """
 </style>
 
 <div id="agl-bar">
-  <div id="agl-ctrl-row">
-    <button class="agl-k" data-seq="ENTER">Enter</button>
-    <button class="agl-k" data-seq="TAB">Tab</button>
-    <button class="agl-k" data-seq="ESC">Esc</button>
-    <button class="agl-k" data-seq="UP">↑</button>
-    <button class="agl-k" data-seq="DOWN">↓</button>
-    <button class="agl-k" data-seq="LEFT">←</button>
-    <button class="agl-k" data-seq="RIGHT">→</button>
+  <div id="agl-ctrl-grid">
+    <!-- 윗줄: 왼쪽 [Esc] | 오른쪽 [Enter] [ ↑ ] [빈공간] -->
+    <div class="agl-key-row">
+      <div class="agl-key-group">
+        <button class="agl-k wide" data-seq="ESC">Esc</button>
+      </div>
+      <div class="agl-key-group">
+        <button class="agl-k wide" data-seq="ENTER">Enter</button>
+        <button class="agl-k" data-seq="UP">↑</button>
+        <div class="agl-k-spacer"></div>
+      </div>
+    </div>
+    <!-- 아랫줄: 왼쪽 [Tab] | 오른쪽 [ ← ] [ ↓ ] [ → ] -->
+    <div class="agl-key-row">
+      <div class="agl-key-group">
+        <button class="agl-k wide" data-seq="TAB">Tab</button>
+      </div>
+      <div class="agl-key-group">
+        <button class="agl-k" data-seq="LEFT">←</button>
+        <button class="agl-k" data-seq="DOWN">↓</button>
+        <button class="agl-k" data-seq="RIGHT">→</button>
+      </div>
+    </div>
   </div>
   <div id="agl-input-row">
     <span id="agl-dot" style="background:#38a169;"></span>
