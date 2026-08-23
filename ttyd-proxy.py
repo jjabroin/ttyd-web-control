@@ -287,21 +287,14 @@ BODY_INJECT = """
       lastTime = currentTime;
       accum += dy;
 
-      var step = 10; // 10px마다 1줄
-      if (Math.abs(accum) >= step) {
+      var ROW_STEP = 16; // 손가락으로 16px 밀 때마다 정확히 1줄 스크롤
+      if (Math.abs(accum) >= ROW_STEP) {
         var dir = accum > 0 ? 1 : -1;
-        var speed = Math.abs(dy) / dt;
-
-        // 속도 가중치: 빠르게 스와이프할 때 추가 라인 부여
-        var mult = 1;
-        if (speed > 1.2) mult = 2;
-        if (speed > 2.0) mult = 3;
-
-        var linesToScroll = Math.floor(Math.abs(accum) / step) * mult;
-        accum = accum % step;
+        var count = Math.floor(Math.abs(accum) / ROW_STEP);
+        accum -= dir * count * ROW_STEP;
 
         var target = tc.querySelector('.xterm-screen') || tc;
-        for (var i = 0; i < linesToScroll; i++) {
+        for (var i = 0; i < count; i++) {
           var ev = new WheelEvent('wheel', {
             bubbles: true,
             cancelable: true,
