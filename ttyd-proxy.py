@@ -274,6 +274,7 @@ BODY_INJECT = """
       var currentY = e.touches[0].clientY;
       var currentTime = performance.now();
       var dy = lastY - currentY;
+      var dt = currentTime - lastTime || 16;
       var totalDY = Math.abs(currentY - startY);
       var totalDX = Math.abs(e.touches[0].clientX - startX);
 
@@ -286,13 +287,22 @@ BODY_INJECT = """
       e.preventDefault();
 
       lastY = currentY;
+      lastTime = currentTime;
       accum += dy;
 
-      var ROW_STEP = 14; // 터치 이동 14px당 1줄 정확히 스크롤
+      var ROW_STEP = 15; // 천천히 움직일 땐 15px당 1줄씩 정밀 이동
       if (Math.abs(accum) >= ROW_STEP) {
         var dir = accum > 0 ? 1 : -1;
         var count = Math.floor(Math.abs(accum) / ROW_STEP);
         accum -= dir * count * ROW_STEP;
+
+        // 속도 계산 (px/ms)
+        var speed = Math.abs(dy) / dt;
+        if (speed > 1.8) {
+          count = Math.min(count * 4, 12);
+        } else if (speed > 1.0) {
+          count = Math.min(count * 2, 6);
+        }
 
         // ttyd xterm 스크린 요소 타깃팅
         var target = tc.querySelector('.xterm-screen') || tc;
