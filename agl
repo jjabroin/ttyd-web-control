@@ -8,7 +8,7 @@ import tty
 import re
 from datetime import datetime
 
-BASE_HOME = os.path.expanduser("~")
+BASE_HOME = "/Users/leeseungyoon"
 CACHE_FILE = os.path.join(BASE_HOME, ".antigravity_quota_cache.json")
 ACCOUNTS_JSON = os.path.join(BASE_HOME, ".antigravity_accounts.json")
 AGY_PATH = os.path.join(BASE_HOME, ".local/bin/agy")
