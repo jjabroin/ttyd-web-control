@@ -2,7 +2,7 @@
 # ttyd + proxy + tmux 세션 유지 자동 시작 스크립트
 export LANG=ko_KR.UTF-8
 export LC_ALL=ko_KR.UTF-8
-export PATH="/usr/local/bin:/Users/leeseungyoon/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+export PATH="/usr/local/bin:$HOME/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
 
 # 이전 프로세스 정리
 pkill -f "ttyd.*7682" 2>/dev/null
