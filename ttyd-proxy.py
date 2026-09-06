@@ -128,14 +128,6 @@ BODY_INJECT = """
     gap: 6px;
     padding: 3px 8px 5px;
   }
-  #agl-dot {
-    width: 10px; height: 10px;
-    border-radius: 50%;
-    background: #4af626;
-    flex-shrink: 0;
-    display: inline-block;
-    margin-left: 2px;
-  }
   #agl-text {
     flex: 1;
     background: #2d2d2d;
@@ -173,9 +165,12 @@ BODY_INJECT = """
     border: 1px solid #3e3e3e;
     border-radius: 4px;
     padding: 0;
-    width: 32px;
+    width: 34px;
     height: 36px;
-    font-size: 16px;
+    font-size: 20px;
+    font-weight: 300;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
     user-select: none;
@@ -284,9 +279,8 @@ BODY_INJECT = """
     <button class="agl-k" data-seq="RIGHT">→</button>
   </div>
   <div id="agl-input-row">
-    <span id="agl-dot" style="background:#38a169;"></span>
     <input type="file" id="agl-file-input" style="display:none;" />
-    <button id="agl-attach-btn" type="button" title="사진/파일 첨부">📎</button>
+    <button id="agl-attach-btn" type="button" title="사진/파일 첨부">+</button>
     <input id="agl-text" type="text"
       placeholder="입력 후 전송..."
       autocomplete="off" autocorrect="off"
@@ -300,7 +294,6 @@ BODY_INJECT = """
 (function() {
   var sendBtn = document.getElementById('agl-send');
   var input   = document.getElementById('agl-text');
-  var dot     = document.getElementById('agl-dot');
 
   var fileInput     = document.getElementById('agl-file-input');
   var attachBtn     = document.getElementById('agl-attach-btn');
@@ -388,10 +381,6 @@ BODY_INJECT = """
       method: 'POST',
       headers: { 'Content-Type': 'text/plain; charset=utf-8' },
       body: text
-    }).then(function(r) {
-      if (dot) dot.style.background = r.ok ? '#4af626' : '#ff4444';
-    }).catch(function() {
-      if (dot) dot.style.background = '#ff4444';
     });
   }
 
@@ -404,7 +393,6 @@ BODY_INJECT = """
       var origText = sendBtn.textContent;
       sendBtn.textContent = '전송중...';
       sendBtn.disabled = true;
-      if (dot) dot.style.background = '#e5c07b';
 
       var formData = new FormData();
       formData.append('file', pendingFile);
@@ -427,7 +415,6 @@ BODY_INJECT = """
         await sendToProxy(terminalMsg + '\\r');
       } catch (err) {
         alert('파일 전송 실패: ' + err.message);
-        if (dot) dot.style.background = '#ff4444';
       } finally {
         isSending = false;
         sendBtn.textContent = origText;
