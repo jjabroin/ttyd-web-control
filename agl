@@ -91,6 +91,7 @@ def create_account_env_if_needed(target_home):
                 pass
 
 def get_key():
+    import select as _select
     fd = sys.stdin.fileno()
     try:
         old_settings = termios.tcgetattr(fd)
@@ -100,37 +101,41 @@ def get_key():
     try:
         if old_settings:
             tty.setraw(fd)
-            try:
-                termios.tcflush(fd, termios.TCIFLUSH)
-            except Exception:
-                pass
+
+        # 첫 바이트 읽기 (블로킹)
         ch = sys.stdin.read(1)
+
         if ch == '\x1b':
-            # 0.15초 타임아웃 — ttyd 웹 터미널은 네트워크 레이턴시로 시퀀스 바이트가 늦게 도착
-            import select
-            r, _, _ = select.select([sys.stdin], [], [], 0.15)
-            if r:
-                ch2 = sys.stdin.read(1)
-                if ch2 == '[':
-                    # 두 번째 바이트도 동일하게 대기
-                    r2, _, _ = select.select([sys.stdin], [], [], 0.15)
-                    if r2:
-                        ch3 = sys.stdin.read(1)
-                        if ch3 == 'A': return 'UP'
-                        if ch3 == 'B': return 'DOWN'
-                        if ch3 == 'C': return 'RIGHT'
-                        if ch3 == 'D': return 'LEFT'
-            else:
-                return 'QUIT'  # 0.15초 내 다음 바이트 없으면 단독 ESC → 종료
+            # 나머지 시퀀스 바이트를 한 번에 모아 읽기 (500ms 대기)
+            buf = ch
+            deadline = 0.5  # 총 500ms 안에 전체 시퀀스를 읽음
+            while True:
+                r, _, _ = _select.select([sys.stdin], [], [], deadline)
+                if not r:
+                    break
+                nch = sys.stdin.read(1)
+                buf += nch
+                deadline = 0.05  # 첫 바이트 들어온 뒤엔 빠르게 이어받음
+                if len(buf) >= 3:
+                    break
+
+            if buf == '\x1b[A': return 'UP'
+            if buf == '\x1b[B': return 'DOWN'
+            if buf == '\x1b[C': return 'RIGHT'
+            if buf == '\x1b[D': return 'LEFT'
+            # 단독 ESC는 그냥 무시 (종료 유발 안 함)
+            return None
+
         if ch == '\t': return 'REFRESH'  # Tab: 새로고침
         if ch in ('\r', '\n'): return 'ENTER'
         if ch == '\x03': return 'QUIT'  # Ctrl+C
-        # 숫자 키 지원 (1~9)
+        if ch in ('q', 'Q'): return 'QUIT'  # q 로도 종료 가능
         if ch in '123456789': return ch
         return ch
     finally:
         if old_settings:
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
 
 def load_data():
     if os.path.exists(CACHE_FILE):
