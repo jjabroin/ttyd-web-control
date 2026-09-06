@@ -9,11 +9,15 @@ import asyncio
 import aiohttp
 from aiohttp import web
 import re
+import os
+import datetime
 from collections import deque
 
 TTYD_HOST = "127.0.0.1"
 TTYD_PORT = 7682
 PROXY_PORT = 7681
+UPLOAD_DIR = os.path.expanduser('~/ttyd-uploads')
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # 현재 활성 ttyd WebSocket 연결 저장소
 active_ttyd_ws = None
@@ -162,11 +166,114 @@ BODY_INJECT = """
     white-space: nowrap;
     min-height: 36px;
   }
+  #agl-attach-btn {
+    flex-shrink: 0;
+    background: #282828;
+    color: #ccc;
+    border: 1px solid #3e3e3e;
+    border-radius: 4px;
+    padding: 0;
+    width: 32px;
+    height: 36px;
+    font-size: 16px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #agl-attach-btn:active { background: #505050; color: #fff; }
+
+  #agl-preview-bar {
+    display: none;
+    background: #23272e;
+    border-bottom: 1px solid #333;
+    padding: 6px 10px;
+    align-items: center;
+    gap: 8px;
+    animation: aglSlideUp 0.15s ease-out;
+  }
+  @keyframes aglSlideUp {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .agl-preview-thumb {
+    width: 34px;
+    height: 34px;
+    border-radius: 4px;
+    border: 1px solid #444;
+    object-fit: cover;
+    background: #181818;
+    flex-shrink: 0;
+  }
+  .agl-preview-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 4px;
+    border: 1px solid #444;
+    background: #2a2a2a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .agl-preview-details {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 1px;
+  }
+  .agl-preview-name {
+    color: #e0e0e0;
+    font-size: 12px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .agl-preview-size {
+    color: #777;
+    font-size: 10px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  .agl-preview-cancel {
+    background: #333;
+    border: 1px solid #444;
+    color: #aaa;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .agl-preview-cancel:active {
+    background: #e05555;
+    color: #fff;
+    border-color: #e05555;
+  }
+
   #agl-send:active { background: #555; }
 
 </style>
 
 <div id="agl-bar">
+  <div id="agl-preview-bar">
+    <div id="agl-preview-media"></div>
+    <div class="agl-preview-details">
+      <span id="agl-preview-name" class="agl-preview-name"></span>
+      <span id="agl-preview-size" class="agl-preview-size"></span>
+    </div>
+    <button id="agl-preview-cancel" class="agl-preview-cancel" type="button" title="첨부 취소">✕</button>
+  </div>
   <div id="agl-ctrl-row">
     <button class="agl-k" data-seq="ESC">Esc</button>
     <button class="agl-k" data-seq="TAB">Tab</button>
@@ -178,6 +285,8 @@ BODY_INJECT = """
   </div>
   <div id="agl-input-row">
     <span id="agl-dot" style="background:#38a169;"></span>
+    <input type="file" id="agl-file-input" style="display:none;" />
+    <button id="agl-attach-btn" type="button" title="사진/파일 첨부">📎</button>
     <input id="agl-text" type="text"
       placeholder="입력 후 전송..."
       autocomplete="off" autocorrect="off"
@@ -193,6 +302,86 @@ BODY_INJECT = """
   var input   = document.getElementById('agl-text');
   var dot     = document.getElementById('agl-dot');
 
+  var fileInput     = document.getElementById('agl-file-input');
+  var attachBtn     = document.getElementById('agl-attach-btn');
+  var previewBar    = document.getElementById('agl-preview-bar');
+  var previewMedia  = document.getElementById('agl-preview-media');
+  var previewName   = document.getElementById('agl-preview-name');
+  var previewSize   = document.getElementById('agl-preview-size');
+  var previewCancel = document.getElementById('agl-preview-cancel');
+  var pendingFile   = null;
+  var isSending     = false;
+
+  function formatFileSize(bytes) {
+    if (!bytes || bytes <= 0) return '0 B';
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  function setPendingFile(file) {
+    if (!file) return;
+    pendingFile = file;
+    previewName.textContent = file.name || '첨부 파일';
+    previewSize.textContent = formatFileSize(file.size);
+    previewMedia.innerHTML = '';
+    if (file.type && file.type.startsWith('image/')) {
+      var img = document.createElement('img');
+      img.className = 'agl-preview-thumb';
+      img.src = URL.createObjectURL(file);
+      previewMedia.appendChild(img);
+    } else {
+      var icon = document.createElement('div');
+      icon.className = 'agl-preview-icon';
+      icon.textContent = '📄';
+      previewMedia.appendChild(icon);
+    }
+    previewBar.style.display = 'flex';
+  }
+
+  function clearPendingFile() {
+    pendingFile = null;
+    if (fileInput) fileInput.value = '';
+    if (previewBar) previewBar.style.display = 'none';
+    if (previewMedia) previewMedia.innerHTML = '';
+  }
+
+  if (attachBtn) {
+    attachBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      fileInput.click();
+    });
+  }
+
+  if (previewCancel) {
+    previewCancel.addEventListener('click', function(e) {
+      e.preventDefault();
+      clearPendingFile();
+    });
+  }
+
+  if (fileInput) {
+    fileInput.addEventListener('change', function() {
+      if (fileInput.files && fileInput.files[0]) {
+        setPendingFile(fileInput.files[0]);
+      }
+    });
+  }
+
+  // 드래그 앤 드롭 및 클립보드 붙여넣기 지원
+  window.addEventListener('dragover', function(e) { e.preventDefault(); });
+  window.addEventListener('drop', function(e) {
+    e.preventDefault();
+    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      setPendingFile(e.dataTransfer.files[0]);
+    }
+  });
+  window.addEventListener('paste', function(e) {
+    if (e.clipboardData && e.clipboardData.files && e.clipboardData.files.length > 0) {
+      setPendingFile(e.clipboardData.files[0]);
+    }
+  });
+
   // /input 엔드포인트로 HTTP POST — 프록시가 ttyd WebSocket에 직접 주입
   function sendToProxy(text) {
     return fetch('/input', {
@@ -206,12 +395,50 @@ BODY_INJECT = """
     });
   }
 
-  function doSend() {
+  async function doSend() {
+    if (isSending) return;
     var val = input.value || '';
-    input.value = '';
-    sendToProxy(val + '\\r');
-    sendBtn.style.background = '#555';
-    setTimeout(function() { sendBtn.style.background = ''; }, 120);
+
+    if (pendingFile) {
+      isSending = true;
+      var origText = sendBtn.textContent;
+      sendBtn.textContent = '전송중...';
+      sendBtn.disabled = true;
+      if (dot) dot.style.background = '#e5c07b';
+
+      var formData = new FormData();
+      formData.append('file', pendingFile);
+
+      try {
+        var res = await fetch('/upload', {
+          method: 'POST',
+          body: formData
+        });
+        var data = await res.json();
+        if (!res.ok || !data.path) {
+          throw new Error(data.error || 'Upload failed');
+        }
+
+        var textContent = val.trim();
+        var terminalMsg = textContent ? (data.path + ' ' + textContent) : data.path;
+
+        input.value = '';
+        clearPendingFile();
+        await sendToProxy(terminalMsg + '\\r');
+      } catch (err) {
+        alert('파일 전송 실패: ' + err.message);
+        if (dot) dot.style.background = '#ff4444';
+      } finally {
+        isSending = false;
+        sendBtn.textContent = origText;
+        sendBtn.disabled = false;
+      }
+    } else {
+      input.value = '';
+      sendToProxy(val + '\\r');
+      sendBtn.style.background = '#555';
+      setTimeout(function() { sendBtn.style.background = ''; }, 120);
+    }
   }
 
   // 키보드 Enter
@@ -579,10 +806,49 @@ async def handle_mouse_toggle(request):
         return web.Response(status=500, text=str(e))
 
 
+async def handle_upload(request):
+    """모바일/웹 파일 업로드 수신 -> UPLOAD_DIR에 저장 후 절대 경로 반환"""
+    try:
+        reader = await request.multipart()
+        field = await reader.next()
+        if not field:
+            return web.json_response({'error': 'No file uploaded'}, status=400)
+
+        filename = field.filename or 'upload'
+        base, ext = os.path.splitext(filename)
+        # 파일명 정리: 영문, 숫자, 한글, 언더스코어, 하이픈 외는 언더스코어로 치환
+        safe_base = re.sub(r'[^\w\-]', '_', base)
+        if not safe_base:
+            safe_base = 'file'
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        final_filename = f"{timestamp}_{safe_base}{ext}"
+        save_path = os.path.join(UPLOAD_DIR, final_filename)
+
+        with open(save_path, 'wb') as f:
+            while True:
+                chunk = await field.read_chunk()
+                if not chunk:
+                    break
+                f.write(chunk)
+
+        print(f"📥 파일 업로드 완료: {save_path} ({os.path.getsize(save_path)} bytes)")
+        return web.json_response({
+            'status': 'ok',
+            'path': save_path,
+            'filename': final_filename,
+            'size': os.path.getsize(save_path)
+        })
+    except Exception as e:
+        print(f"❌ 파일 업로드 실패: {e}")
+        return web.json_response({'error': str(e)}, status=500)
+
+
 async def router(request):
     if request.path in STATIC_FILES:
         filepath, ctype = STATIC_FILES[request.path]
         return web.FileResponse(filepath, headers={'Content-Type': ctype, 'Cache-Control': 'public, max-age=86400'})
+    if request.path == '/upload':
+        return await handle_upload(request)
     if request.path == '/input':
         return await handle_input(request)
     if request.path == '/terminal_text':
@@ -597,7 +863,7 @@ async def router(request):
 
 
 async def main():
-    app = web.Application()
+    app = web.Application(client_max_size=100 * 1024 * 1024)
     app.router.add_route('*', '/{path_info:.*}', router)
     runner = web.AppRunner(app)
     await runner.setup()
