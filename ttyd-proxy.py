@@ -85,44 +85,107 @@ BODY_INJECT = """
 <style>
   #agl-bar {
     flex: 0 0 auto;
-    background: #1a1a1a;
-    border-top: 1px solid #333;
+    background: #161616;
+    border-top: 1px solid #282828;
     padding-bottom: env(safe-area-inset-bottom, 0px);
     width: 100%;
   }
-  #agl-ctrl-grid {
+  #agl-handle-bar {
+    width: 100%;
+    height: 11px;
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    padding: 6px 12px 5px;
+    justify-content: center;
+    cursor: pointer;
     user-select: none;
     -webkit-user-select: none;
+    touch-action: none;
+    padding-top: 2px;
+  }
+  #agl-handle-pill {
+    width: 32px;
+    height: 3px;
+    border-radius: 2px;
+    background: #444;
+    transition: background 0.15s ease, transform 0.15s ease;
+  }
+  #agl-handle-bar:active #agl-handle-pill {
+    background: #777;
+    transform: scaleY(1.3);
+  }
+  #agl-ctrl-container {
+    padding: 0 10px 4px;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  #agl-bar[data-mode="0"] #agl-ctrl-container {
+    display: none !important;
+  }
+  #agl-bar[data-mode="1"] #agl-grid-2row {
+    display: none !important;
+  }
+  #agl-bar[data-mode="1"] #agl-grid-1row {
+    display: flex !important;
+  }
+  #agl-bar[data-mode="2"] #agl-grid-1row {
+    display: none !important;
+  }
+  #agl-bar[data-mode="2"] #agl-grid-2row {
+    display: flex !important;
+  }
+
+  /* 2줄 모드 레이아웃 */
+  #agl-grid-2row {
+    justify-content: space-between;
+    align-items: center;
   }
   .agl-ctrl-left {
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: 4px;
     align-items: flex-start;
   }
-  .agl-ctrl-right {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    align-items: flex-start;
-  }
-  .agl-r-row {
-    display: flex;
-    gap: 5px;
+  .agl-ctrl-right-grid {
+    display: grid;
+    grid-template-columns: 44px 30px 30px;
+    grid-template-rows: 25px 25px;
+    gap: 4px;
     align-items: center;
   }
+  .agl-k-empty {
+    width: 30px;
+    height: 25px;
+  }
+  .agl-k-left-arrow {
+    justify-self: end;
+  }
+
+  /* 1줄 모드 레이아웃 */
+  #agl-grid-1row {
+    justify-content: space-between;
+    align-items: center;
+    height: 27px;
+  }
+  .agl-ctrl-left-1row {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+  .agl-ctrl-right-1row {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+
+  /* 공통 키캡 스타일 (컴팩트 25px 높이) */
   .agl-k {
     background: linear-gradient(180deg, #2c2c2e 0%, #1f1f21 100%);
     color: #f2f2f7;
     border: 1px solid #3c3c40;
-    border-radius: 6px;
+    border-radius: 5px;
     padding: 0;
-    height: 30px;
-    font-size: 13px;
+    height: 25px;
+    font-size: 11px;
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
@@ -130,7 +193,7 @@ BODY_INJECT = """
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    box-shadow: 0 2px 3px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
     transition: transform 0.05s ease, background 0.05s ease;
   }
   .agl-k:active {
@@ -139,10 +202,11 @@ BODY_INJECT = """
     transform: translateY(1px);
     color: #fff;
   }
-  .agl-k-esc { width: 48px; }
-  .agl-k-tab { width: 58px; }
-  .agl-k-enter { width: 68px; }
-  .agl-k-arrow { width: 36px; font-size: 15px; }
+  .agl-k-esc { width: 38px; }
+  .agl-k-tab { width: 46px; }
+  .agl-k-enter-2row { width: 44px; }
+  .agl-k-enter-1row { width: 46px; }
+  .agl-k-arrow { width: 30px; font-size: 13px; }
   #agl-input-row {
     display: flex;
     align-items: center;
@@ -281,7 +345,7 @@ BODY_INJECT = """
 
 </style>
 
-<div id="agl-bar">
+<div id="agl-bar" data-mode="2">
   <div id="agl-preview-bar">
     <div id="agl-preview-media"></div>
     <div class="agl-preview-details">
@@ -290,18 +354,35 @@ BODY_INJECT = """
     </div>
     <button id="agl-preview-cancel" class="agl-preview-cancel" type="button" title="첨부 취소">✕</button>
   </div>
-  <div id="agl-ctrl-grid">
-    <div class="agl-ctrl-left">
-      <button class="agl-k agl-k-esc" data-seq="ESC">Esc</button>
-      <button class="agl-k agl-k-tab" data-seq="TAB">Tab</button>
-    </div>
-    <div class="agl-ctrl-right">
-      <div class="agl-r-row">
-        <button class="agl-k agl-k-enter" data-seq="ENTER">Enter</button>
-        <button class="agl-k agl-k-arrow" data-seq="UP">↑</button>
+  <div id="agl-handle-bar" title="당겨서 0~2줄 조절">
+    <div id="agl-handle-pill"></div>
+  </div>
+  <div id="agl-ctrl-container">
+    <!-- 2줄 모드 -->
+    <div id="agl-grid-2row">
+      <div class="agl-ctrl-left">
+        <button class="agl-k agl-k-esc" data-seq="ESC">Esc</button>
+        <button class="agl-k agl-k-tab" data-seq="TAB">Tab</button>
       </div>
-      <div class="agl-r-row">
+      <div class="agl-ctrl-right-grid">
+        <button class="agl-k agl-k-enter-2row" data-seq="ENTER">Enter</button>
+        <button class="agl-k agl-k-arrow" data-seq="UP">↑</button>
+        <div class="agl-k-empty"></div>
+        <button class="agl-k agl-k-arrow agl-k-left-arrow" data-seq="LEFT">←</button>
+        <button class="agl-k agl-k-arrow" data-seq="DOWN">↓</button>
+        <button class="agl-k agl-k-arrow" data-seq="RIGHT">→</button>
+      </div>
+    </div>
+    <!-- 1줄 모드 -->
+    <div id="agl-grid-1row">
+      <div class="agl-ctrl-left-1row">
+        <button class="agl-k agl-k-esc" data-seq="ESC">Esc</button>
+        <button class="agl-k agl-k-tab" data-seq="TAB">Tab</button>
+      </div>
+      <div class="agl-ctrl-right-1row">
+        <button class="agl-k agl-k-enter-1row" data-seq="ENTER">Enter</button>
         <button class="agl-k agl-k-arrow" data-seq="LEFT">←</button>
+        <button class="agl-k agl-k-arrow" data-seq="UP">↑</button>
         <button class="agl-k agl-k-arrow" data-seq="DOWN">↓</button>
         <button class="agl-k agl-k-arrow" data-seq="RIGHT">→</button>
       </div>
@@ -321,8 +402,85 @@ BODY_INJECT = """
 
 <script>
 (function() {
-  var sendBtn = document.getElementById('agl-send');
-  var input   = document.getElementById('agl-text');
+  var bar           = document.getElementById('agl-bar');
+  var handleBar     = document.getElementById('agl-handle-bar');
+  var ctrlContainer = document.getElementById('agl-ctrl-container');
+  var sendBtn       = document.getElementById('agl-send');
+  var input         = document.getElementById('agl-text');
+
+  // 줄 수 모드: 0 (가림), 1 (1줄), 2 (2줄)
+  var currentMode = 2;
+  try {
+    var saved = localStorage.getItem('agl_bar_mode');
+    if (saved === '0' || saved === '1' || saved === '2') {
+      currentMode = parseInt(saved, 10);
+    }
+  } catch (e) {}
+
+  function setMode(mode, save) {
+    currentMode = Math.max(0, Math.min(2, mode));
+    if (bar) bar.setAttribute('data-mode', currentMode);
+    if (save !== false) {
+      try { localStorage.setItem('agl_bar_mode', currentMode); } catch (e) {}
+    }
+    fixLayout();
+    setTimeout(fixLayout, 80);
+  }
+
+  setMode(currentMode, false);
+
+  // 제스처: 위로 당기면 확장(0->1->2), 아래로 당기면 축소(2->1->0)
+  var dragStartY = 0;
+  var dragStartX = 0;
+  var isDragging = false;
+
+  function handleTouchStart(e) {
+    if (e.touches.length === 1) {
+      dragStartY = e.touches[0].clientY;
+      dragStartX = e.touches[0].clientX;
+      isDragging = true;
+    }
+  }
+
+  function handleTouchEnd(e) {
+    if (!isDragging) return;
+    isDragging = false;
+    var endY = (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0].clientY : dragStartY;
+    var endX = (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0].clientX : dragStartX;
+    var dy = endY - dragStartY; // 위로 밀면 음수, 아래로 당기면 양수
+    var dx = endX - dragStartX;
+
+    if (Math.abs(dy) > 18 && Math.abs(dy) > Math.abs(dx)) {
+      if (dy < 0) {
+        // 위로 밀었을 때: 줄 수 증가
+        setMode(currentMode + 1);
+      } else {
+        // 아래로 내렸을 때: 줄 수 감소
+        setMode(currentMode - 1);
+      }
+    }
+  }
+
+  if (handleBar) {
+    handleBar.addEventListener('touchstart', handleTouchStart, { passive: true });
+    handleBar.addEventListener('touchend', handleTouchEnd, { passive: true });
+    handleBar.addEventListener('click', function(e) {
+      e.preventDefault();
+      // 클릭 시 0 -> 1 -> 2 -> 0 순환 토글
+      setMode((currentMode + 1) % 3);
+    });
+  }
+
+  if (ctrlContainer) {
+    ctrlContainer.addEventListener('touchstart', function(e) {
+      if (e.target.classList.contains('agl-k')) return;
+      handleTouchStart(e);
+    }, { passive: true });
+    ctrlContainer.addEventListener('touchend', function(e) {
+      if (e.target.classList.contains('agl-k')) return;
+      handleTouchEnd(e);
+    }, { passive: true });
+  }
 
   var fileInput     = document.getElementById('agl-file-input');
   var attachBtn     = document.getElementById('agl-attach-btn');
