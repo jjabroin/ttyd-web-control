@@ -90,38 +90,59 @@ BODY_INJECT = """
     padding-bottom: env(safe-area-inset-bottom, 0px);
     width: 100%;
   }
-  #agl-ctrl-row {
+  #agl-ctrl-grid {
     display: flex;
-    justify-content: flex-end;
-    gap: 5px;
-    padding: 5px 10px 3px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 12px 5px;
     user-select: none;
     -webkit-user-select: none;
   }
-  #agl-ctrl-row::-webkit-scrollbar { display: none; }
+  .agl-ctrl-left {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    align-items: flex-start;
+  }
+  .agl-ctrl-right {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    align-items: flex-start;
+  }
+  .agl-r-row {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+  }
   .agl-k {
-    flex-shrink: 0;
-    background: #282828;
-    color: #ccc;
-    border: 1px solid #3e3e3e;
-    border-radius: 4px;
+    background: linear-gradient(180deg, #2c2c2e 0%, #1f1f21 100%);
+    color: #f2f2f7;
+    border: 1px solid #3c3c40;
+    border-radius: 6px;
     padding: 0;
-    width: 32px;
-    height: 26px;
-    font-size: 11px;
-    font-family: 'Menlo', monospace;
+    height: 30px;
+    font-size: 13px;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
     user-select: none;
     display: flex;
     align-items: center;
     justify-content: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    transition: transform 0.05s ease, background 0.05s ease;
   }
-  .agl-k.wide { width: 44px; }
-  .agl-k:active { background: #505050; color: #fff; }
+  .agl-k:active {
+    background: #3a3a3e;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    transform: translateY(1px);
+    color: #fff;
+  }
+  .agl-k-esc { width: 48px; }
+  .agl-k-tab { width: 58px; }
+  .agl-k-enter { width: 68px; }
+  .agl-k-arrow { width: 36px; font-size: 15px; }
   #agl-input-row {
     display: flex;
     align-items: center;
@@ -269,14 +290,22 @@ BODY_INJECT = """
     </div>
     <button id="agl-preview-cancel" class="agl-preview-cancel" type="button" title="첨부 취소">✕</button>
   </div>
-  <div id="agl-ctrl-row">
-    <button class="agl-k" data-seq="ESC">Esc</button>
-    <button class="agl-k" data-seq="TAB">Tab</button>
-    <button class="agl-k wide" data-seq="ENTER">Enter</button>
-    <button class="agl-k" data-seq="LEFT">←</button>
-    <button class="agl-k" data-seq="UP">↑</button>
-    <button class="agl-k" data-seq="DOWN">↓</button>
-    <button class="agl-k" data-seq="RIGHT">→</button>
+  <div id="agl-ctrl-grid">
+    <div class="agl-ctrl-left">
+      <button class="agl-k agl-k-esc" data-seq="ESC">Esc</button>
+      <button class="agl-k agl-k-tab" data-seq="TAB">Tab</button>
+    </div>
+    <div class="agl-ctrl-right">
+      <div class="agl-r-row">
+        <button class="agl-k agl-k-enter" data-seq="ENTER">Enter</button>
+        <button class="agl-k agl-k-arrow" data-seq="UP">↑</button>
+      </div>
+      <div class="agl-r-row">
+        <button class="agl-k agl-k-arrow" data-seq="LEFT">←</button>
+        <button class="agl-k agl-k-arrow" data-seq="DOWN">↓</button>
+        <button class="agl-k agl-k-arrow" data-seq="RIGHT">→</button>
+      </div>
+    </div>
   </div>
   <div id="agl-input-row">
     <input type="file" id="agl-file-input" style="display:none;" />
