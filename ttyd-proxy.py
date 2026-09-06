@@ -92,7 +92,7 @@ BODY_INJECT = """
   }
   #agl-handle-bar {
     width: 100%;
-    height: 11px;
+    height: 16px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -100,32 +100,43 @@ BODY_INJECT = """
     user-select: none;
     -webkit-user-select: none;
     touch-action: none;
-    padding-top: 2px;
+    padding: 2px 0;
   }
   #agl-handle-pill {
-    width: 32px;
-    height: 3px;
+    width: 36px;
+    height: 4px;
     border-radius: 2px;
-    background: #444;
+    background: #4e4e52;
     transition: background 0.15s ease, transform 0.15s ease;
   }
   #agl-handle-bar:active #agl-handle-pill {
-    background: #777;
-    transform: scaleY(1.3);
+    background: #888;
+    transform: scaleY(1.2);
   }
   #agl-ctrl-container {
     padding: 0 10px 4px;
     user-select: none;
     -webkit-user-select: none;
+    overflow: hidden;
+    box-sizing: border-box;
   }
   #agl-bar[data-mode="0"] #agl-ctrl-container {
-    display: none !important;
+    height: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    display: none;
+  }
+  #agl-bar[data-mode="1"] #agl-ctrl-container {
+    height: 31px;
   }
   #agl-bar[data-mode="1"] #agl-grid-2row {
     display: none !important;
   }
   #agl-bar[data-mode="1"] #agl-grid-1row {
     display: flex !important;
+  }
+  #agl-bar[data-mode="2"] #agl-ctrl-container {
+    height: 58px;
   }
   #agl-bar[data-mode="2"] #agl-grid-1row {
     display: none !important;
@@ -408,7 +419,10 @@ BODY_INJECT = """
   var sendBtn       = document.getElementById('agl-send');
   var input         = document.getElementById('agl-text');
 
-  // 줄 수 모드: 0 (가림), 1 (1줄), 2 (2줄)
+  var grid2Row      = document.getElementById('agl-grid-2row');
+  var grid1Row      = document.getElementById('agl-grid-1row');
+
+  var MODE_HEIGHTS = [0, 31, 58]; // 0줄: 0px, 1줄: 31px, 2줄: 58px
   var currentMode = 2;
   try {
     var saved = localStorage.getItem('agl_bar_mode');
@@ -417,9 +431,29 @@ BODY_INJECT = """
     }
   } catch (e) {}
 
+  function applyModeDOM(mode) {
+    if (bar) bar.setAttribute('data-mode', mode);
+    if (ctrlContainer) {
+      ctrlContainer.style.transition = '';
+      ctrlContainer.style.height = '';
+      if (mode === 0) {
+        ctrlContainer.style.display = 'none';
+      } else {
+        ctrlContainer.style.display = 'block';
+        if (mode === 1) {
+          if (grid2Row) grid2Row.style.display = 'none';
+          if (grid1Row) grid1Row.style.display = 'flex';
+        } else {
+          if (grid1Row) grid1Row.style.display = 'none';
+          if (grid2Row) grid2Row.style.display = 'flex';
+        }
+      }
+    }
+  }
+
   function setMode(mode, save) {
     currentMode = Math.max(0, Math.min(2, mode));
-    if (bar) bar.setAttribute('data-mode', currentMode);
+    applyModeDOM(currentMode);
     if (save !== false) {
       try { localStorage.setItem('agl_bar_mode', currentMode); } catch (e) {}
     }
@@ -429,57 +463,149 @@ BODY_INJECT = """
 
   setMode(currentMode, false);
 
-  // 제스처: 위로 당기면 확장(0->1->2), 아래로 당기면 축소(2->1->0)
-  var dragStartY = 0;
-  var dragStartX = 0;
+  // 실시간 1:1 손가락 추적 + 손 놓았을 때 제자리 착 스냅 물리 엔진
+  var touchStartY = 0;
+  var startHeight = 0;
   var isDragging = false;
+  var moveHistory = [];
+  var isTouchOnKey = false;
 
-  function handleTouchStart(e) {
-    if (e.touches.length === 1) {
-      dragStartY = e.touches[0].clientY;
-      dragStartX = e.touches[0].clientX;
-      isDragging = true;
+  function onTouchStart(e) {
+    if (e.touches.length !== 1) return;
+    if (e.target.classList && e.target.classList.contains('agl-k')) {
+      isTouchOnKey = true;
+      return;
+    }
+    isTouchOnKey = false;
+    touchStartY = e.touches[0].clientY;
+    startHeight = MODE_HEIGHTS[currentMode];
+    isDragging = true;
+    moveHistory = [{ y: touchStartY, t: performance.now() }];
+
+    if (ctrlContainer) {
+      ctrlContainer.style.transition = 'none';
+      ctrlContainer.style.display = 'block';
+      ctrlContainer.style.height = startHeight + 'px';
     }
   }
 
-  function handleTouchEnd(e) {
-    if (!isDragging) return;
-    isDragging = false;
-    var endY = (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0].clientY : dragStartY;
-    var endX = (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0].clientX : dragStartX;
-    var dy = endY - dragStartY; // 위로 밀면 음수, 아래로 당기면 양수
-    var dx = endX - dragStartX;
+  function onTouchMove(e) {
+    if (!isDragging || isTouchOnKey || e.touches.length !== 1) return;
+    var currentY = e.touches[0].clientY;
+    var now = performance.now();
+    var dy = currentY - touchStartY; // 위로 이동: dy < 0, 아래로 이동: dy > 0
 
-    if (Math.abs(dy) > 18 && Math.abs(dy) > Math.abs(dx)) {
-      if (dy < 0) {
-        // 위로 밀었을 때: 줄 수 증가
-        setMode(currentMode + 1);
+    // 위로 당기면 높이 증가, 아래로 밀면 높이 감소
+    var rawHeight = startHeight - dy;
+
+    // 쫀득한 고무줄 저항감 (0 미만 또는 58 초과 시 감쇠)
+    var h = rawHeight;
+    if (h < 0) {
+      h = h * 0.25;
+    } else if (h > 58) {
+      h = 58 + (h - 58) * 0.25;
+    }
+    var clampedH = Math.max(0, Math.min(68, h));
+
+    if (ctrlContainer) {
+      ctrlContainer.style.height = clampedH + 'px';
+      if (clampedH < 44) {
+        if (grid2Row) grid2Row.style.display = 'none';
+        if (grid1Row) grid1Row.style.display = 'flex';
       } else {
-        // 아래로 내렸을 때: 줄 수 감소
-        setMode(currentMode - 1);
+        if (grid1Row) grid1Row.style.display = 'none';
+        if (grid2Row) grid2Row.style.display = 'flex';
       }
     }
+
+    moveHistory.push({ y: currentY, t: now });
+    while (moveHistory.length > 0 && now - moveHistory[0].t > 100) {
+      moveHistory.shift();
+    }
+
+    if (e.cancelable) e.preventDefault();
+  }
+
+  function onTouchEnd(e) {
+    if (!isDragging || isTouchOnKey) return;
+    isDragging = false;
+
+    var endY = (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0].clientY : touchStartY;
+    var now = performance.now();
+    while (moveHistory.length > 0 && now - moveHistory[0].t > 100) {
+      moveHistory.shift();
+    }
+
+    // 플릭(flick) 방출 속도 계산 (px/ms)
+    var releaseV = 0;
+    if (moveHistory.length >= 2) {
+      var oldest = moveHistory[0];
+      var newest = moveHistory[moveHistory.length - 1];
+      var dt = newest.t - oldest.t;
+      if (dt > 0) {
+        releaseV = (oldest.y - newest.y) / dt; // 위로 플릭하면 양수, 아래는 음수
+      }
+    }
+
+    var currentH = startHeight - (endY - touchStartY);
+    var targetMode = currentMode;
+
+    if (releaseV > 0.3) {
+      // 위로 튕김 -> 다음 단계로 확장
+      targetMode = Math.min(2, currentMode + 1);
+    } else if (releaseV < -0.3) {
+      // 아래로 튕김 -> 이전 단계로 축소
+      targetMode = Math.max(0, currentMode - 1);
+    } else {
+      // 손을 놓은 현재 높이 위치에 가장 가까운 슬롯으로 착 스냅
+      if (currentH < 15) {
+        targetMode = 0;
+      } else if (currentH < 44) {
+        targetMode = 1;
+      } else {
+        targetMode = 2;
+      }
+    }
+
+    snapToMode(targetMode);
+  }
+
+  function snapToMode(targetMode) {
+    var targetH = MODE_HEIGHTS[targetMode];
+    if (ctrlContainer) {
+      ctrlContainer.style.transition = 'height 0.22s cubic-bezier(0.2, 0.9, 0.3, 1)';
+      ctrlContainer.style.height = targetH + 'px';
+      if (targetMode === 1) {
+        if (grid2Row) grid2Row.style.display = 'none';
+        if (grid1Row) grid1Row.style.display = 'flex';
+      } else if (targetMode === 2) {
+        if (grid1Row) grid1Row.style.display = 'none';
+        if (grid2Row) grid2Row.style.display = 'flex';
+      }
+    }
+
+    setTimeout(function() {
+      setMode(targetMode);
+    }, 230);
   }
 
   if (handleBar) {
-    handleBar.addEventListener('touchstart', handleTouchStart, { passive: true });
-    handleBar.addEventListener('touchend', handleTouchEnd, { passive: true });
+    handleBar.addEventListener('touchstart', onTouchStart, { passive: false });
+    handleBar.addEventListener('touchmove', onTouchMove, { passive: false });
+    handleBar.addEventListener('touchend', onTouchEnd, { passive: true });
+    handleBar.addEventListener('touchcancel', onTouchEnd, { passive: true });
     handleBar.addEventListener('click', function(e) {
       e.preventDefault();
-      // 클릭 시 0 -> 1 -> 2 -> 0 순환 토글
-      setMode((currentMode + 1) % 3);
+      // 단순 탭 시 0 -> 1 -> 2 -> 0 부드러운 스냅 전환
+      snapToMode((currentMode + 1) % 3);
     });
   }
 
   if (ctrlContainer) {
-    ctrlContainer.addEventListener('touchstart', function(e) {
-      if (e.target.classList.contains('agl-k')) return;
-      handleTouchStart(e);
-    }, { passive: true });
-    ctrlContainer.addEventListener('touchend', function(e) {
-      if (e.target.classList.contains('agl-k')) return;
-      handleTouchEnd(e);
-    }, { passive: true });
+    ctrlContainer.addEventListener('touchstart', onTouchStart, { passive: false });
+    ctrlContainer.addEventListener('touchmove', onTouchMove, { passive: false });
+    ctrlContainer.addEventListener('touchend', onTouchEnd, { passive: true });
+    ctrlContainer.addEventListener('touchcancel', onTouchEnd, { passive: true });
   }
 
   var fileInput     = document.getElementById('agl-file-input');
