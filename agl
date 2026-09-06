@@ -106,19 +106,22 @@ def get_key():
                 pass
         ch = sys.stdin.read(1)
         if ch == '\x1b':
-            # 0.05초 타임아웃으로 이스케이프 시퀀스(방향키 등)인지 단독 ESC인지 판별
+            # 0.15초 타임아웃 — ttyd 웹 터미널은 네트워크 레이턴시로 시퀀스 바이트가 늦게 도착
             import select
-            r, _, _ = select.select([sys.stdin], [], [], 0.05)
+            r, _, _ = select.select([sys.stdin], [], [], 0.15)
             if r:
                 ch2 = sys.stdin.read(1)
                 if ch2 == '[':
-                    ch3 = sys.stdin.read(1)
-                    if ch3 == 'A': return 'UP'
-                    if ch3 == 'B': return 'DOWN'
-                    if ch3 == 'C': return 'RIGHT'
-                    if ch3 == 'D': return 'LEFT'
+                    # 두 번째 바이트도 동일하게 대기
+                    r2, _, _ = select.select([sys.stdin], [], [], 0.15)
+                    if r2:
+                        ch3 = sys.stdin.read(1)
+                        if ch3 == 'A': return 'UP'
+                        if ch3 == 'B': return 'DOWN'
+                        if ch3 == 'C': return 'RIGHT'
+                        if ch3 == 'D': return 'LEFT'
             else:
-                return 'QUIT'  # 단독 ESC는 종료
+                return 'QUIT'  # 0.15초 내 다음 바이트 없으면 단독 ESC → 종료
         if ch == '\t': return 'REFRESH'  # Tab: 새로고침
         if ch in ('\r', '\n'): return 'ENTER'
         if ch == '\x03': return 'QUIT'  # Ctrl+C
