@@ -41,6 +41,10 @@ curl -fsSL https://raw.githubusercontent.com/jjabroin/ttyd-web-control/main/inst
 
 Then open **`http://<your-machine>:7681`** in mobile Safari. That's it.
 
+> 🍎 **macOS point-and-click:** grab
+> [`ttyd-web-control-0.1.0.dmg`](https://github.com/jjabroin/ttyd-web-control/releases/latest)
+> from Releases, open it, double-click **`Install.command`** — Terminal runs the same installer above. No CLI typing needed.
+
 Pair with [Tailscale](https://tailscale.com/) for secure iPhone/iPad access from anywhere (no port-forwarding).
 
 ### Options
