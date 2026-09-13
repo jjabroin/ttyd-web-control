@@ -41,7 +41,7 @@ uninstall() {
     rm -f "$HOME/.config/systemd/user/ttyd-web-control.service"
   fi
   pkill -f "ttyd-proxy.py" 2>/dev/null || true
-  rm -rf "$PREFIX" "$BIN_DIR/ttyd-web-control" "$BIN_DIR/agl"
+  rm -rf "$PREFIX" "$BIN_DIR/ttyd-web-control"
   log "Done. tmux sessions and ~/ttyd-uploads were left untouched."
   exit 0
 }
@@ -85,7 +85,6 @@ fetch_files() {
   if [ -n "${LOCAL_SRC:-}" ]; then
     log "Using local source: $LOCAL_SRC"
     cp "$LOCAL_SRC/ttyd-proxy.py" "$LOCAL_SRC/ttyd-start.sh" "$LOCAL_SRC/.tmux.conf" "$PREFIX/"
-    [ -f "$LOCAL_SRC/agl" ] && cp "$LOCAL_SRC/agl" "$PREFIX/" || true
   elif have git; then
     if [ -d "$PREFIX/.git" ]; then
       log "Updating existing checkout in $PREFIX"
@@ -99,9 +98,7 @@ fetch_files() {
     die "git not found and LOCAL_SRC unset."
   fi
   chmod +x "$PREFIX/ttyd-proxy.py" "$PREFIX/ttyd-start.sh"
-  [ -f "$PREFIX/agl" ] && chmod +x "$PREFIX/agl"
   ln -sf "$PREFIX/ttyd-start.sh" "$BIN_DIR/ttyd-web-control"
-  [ -f "$PREFIX/agl" ] && ln -sf "$PREFIX/agl" "$BIN_DIR/agl"
   # Merge our tmux tuning without clobbering the user's own config.
   if [ ! -f "$HOME/.tmux.conf" ]; then
     cp "$PREFIX/.tmux.conf" "$HOME/.tmux.conf"

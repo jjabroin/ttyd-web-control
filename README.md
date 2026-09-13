@@ -120,7 +120,6 @@ ttyd-web-control/
 │                    #   font-size API, uploads, helper endpoints (all env-configurable)
 ├── ttyd-start.sh    # portable launcher: ttyd + tmux -A + proxy (foreground for supervisors)
 ├── .tmux.conf       # mouse on, 10k scrollback, 1:1 wheel bindings
-├── agl              # TUI quota launcher (multi-account helper)
 └── LICENSE          # MIT
 ```
 
