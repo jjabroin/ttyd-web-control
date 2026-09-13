@@ -19,6 +19,10 @@ Control your Mac/Linux **tmux terminal from iPhone/iPad Safari** — with inerti
 
 No broken-CJK needed to love this: tap **`+`**, pick a photo or file, and it's beamed into `~/ttyd-uploads` with its path typed into the terminal for you — like attaching a file in a cloud AI chat app, but the "cloud" is your own machine running **opencode / Claude Code / Gemini CLI**. Screenshot an error on the go → send it straight into your coding agent's prompt. Review a generated image without leaving the couch. That loop alone is worth the install.
 
+<p align="center">
+  <img src="docs/screenshots/hero.jpg" width="300" alt="opencode running in mobile Safari with the control bar" />
+</p>
+
 > 🇰🇷 한국어 요약: iPad/모바일 브라우저에서 Mac의 tmux 터미널을 완벽 제어하기 위한 ttyd 웹 프록시 세트. 아래 한 줄 설치로 바로 시작하세요.
 
 ---
