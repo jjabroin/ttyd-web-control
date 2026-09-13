@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
 """
-ttyd 원본 디자인 유지 + 한글 입력창 주입 프록시 + 100% 텍스트 복사/선택 모달.
-- ttyd: 127.0.0.1:7682 (내부 전용)
-- 프록시: 0.0.0.0:7681 (외부 노출)
+ttyd-web-control proxy: keep stock ttyd UI, inject a mobile-friendly
+control bar (Korean input, shortcut keys, page scroll, font size),
+file upload, and helper endpoints.
+
+- ttyd: 127.0.0.1:7682 (internal only)
+- proxy: 0.0.0.0:7681 (public)
+
+All paths/ports/sessions are overridable via environment variables
+so any machine can run this without editing code (see README).
 """
 
 import asyncio
@@ -10,14 +16,19 @@ import aiohttp
 from aiohttp import web
 import re
 import os
+import shutil
 import datetime
 from collections import deque
 
-TTYD_HOST = "127.0.0.1"
-TTYD_PORT = 7682
-PROXY_PORT = 7681
-UPLOAD_DIR = os.path.expanduser('~/ttyd-uploads')
+TTYD_HOST = os.environ.get("TTYD_HOST", "127.0.0.1")
+TTYD_PORT = int(os.environ.get("TTYD_PORT", "7682"))
+PROXY_PORT = int(os.environ.get("PROXY_PORT", "7681"))
+TMUX_SESSION = os.environ.get("TMUX_SESSION", "agy")
+UPLOAD_DIR = os.path.expanduser(os.environ.get("TTYD_UPLOAD_DIR", "~/ttyd-uploads"))
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+# tmux binary auto-detection (falls back to the macOS Homebrew path)
+TMUX_BIN = shutil.which("tmux") or "/usr/local/bin/tmux"
 
 # 현재 활성 ttyd WebSocket 연결 저장소
 active_ttyd_ws = None
@@ -1103,7 +1114,7 @@ async def handle_terminal_text(request):
     """현재 스크롤되어 화면에 보이는 터미널 화면(tmux visible pane)만 캡처하여 반환"""
     try:
         proc = await asyncio.create_subprocess_exec(
-            '/usr/local/bin/tmux', 'capture-pane', '-p', '-t', 'agy',
+            TMUX_BIN, 'capture-pane', '-p', '-t', TMUX_SESSION,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE
         )
@@ -1119,13 +1130,15 @@ async def handle_terminal_text(request):
 
 
 async def handle_kill_session(request):
-    """서버는 유지하고 터미널 내부 프로세스만 깨끗한 새 쉘(zsh)로 리셋"""
+    """서버는 유지하고 터미널 내부 프로세스만 깨끗한 새 쉘로 리셋"""
     global terminal_buffer
     try:
-        cmd = """
-        pkill -9 -f agy 2>/dev/null
-        /usr/local/bin/tmux respawn-pane -k -t agy zsh 2>/dev/null || /usr/local/bin/tmux new-session -d -s agy zsh 2>/dev/null
-        """
+        shell = os.environ.get("SHELL", "zsh")
+        cmd = (
+            f"pkill -9 -f {TMUX_SESSION} 2>/dev/null; "
+            f"{TMUX_BIN} respawn-pane -k -t {TMUX_SESSION} {shell} 2>/dev/null || "
+            f"{TMUX_BIN} new-session -d -s {TMUX_SESSION} {shell} 2>/dev/null"
+        )
         proc = await asyncio.create_subprocess_shell(cmd)
         await proc.wait()
         terminal_buffer.clear()
@@ -1212,13 +1225,20 @@ async def proxy_http(request):
             return web.Response(status=resp.status, body=body, headers=resp_headers)
 
 
+# Optional static assets (PWA icons). Missing files are simply skipped
+# so the proxy runs fine without a system-wide ttyd data dir.
+_TTYD_SHARE = os.environ.get("TTYD_SHARE_DIR", "/usr/local/share/ttyd")
 STATIC_FILES = {
-    '/apple-touch-icon.png': ('/usr/local/share/ttyd/apple-touch-icon.png', 'image/png'),
-    '/apple-touch-icon-precomposed.png': ('/usr/local/share/ttyd/apple-touch-icon.png', 'image/png'),
-    '/favicon.png': ('/usr/local/share/ttyd/favicon.png', 'image/png'),
-    '/favicon.ico': ('/usr/local/share/ttyd/favicon.png', 'image/png'),
-    '/icon-512.png': ('/usr/local/share/ttyd/icon-512.png', 'image/png'),
-    '/manifest.json': ('/usr/local/share/ttyd/manifest.json', 'application/manifest+json'),
+    path: (os.path.join(_TTYD_SHARE, name), ctype)
+    for path, name, ctype in [
+        ('/apple-touch-icon.png', 'apple-touch-icon.png', 'image/png'),
+        ('/apple-touch-icon-precomposed.png', 'apple-touch-icon.png', 'image/png'),
+        ('/favicon.png', 'favicon.png', 'image/png'),
+        ('/favicon.ico', 'favicon.png', 'image/png'),
+        ('/icon-512.png', 'icon-512.png', 'image/png'),
+        ('/manifest.json', 'manifest.json', 'application/manifest+json'),
+    ]
+    if os.path.exists(os.path.join(_TTYD_SHARE, name))
 }
 
 
@@ -1227,7 +1247,7 @@ async def handle_mouse_toggle(request):
     try:
         # 현재 상태 확인
         proc = await asyncio.create_subprocess_exec(
-            '/usr/local/bin/tmux', 'show-option', '-g', 'mouse',
+            TMUX_BIN, 'show-option', '-g', 'mouse',
             stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
         )
         stdout, _ = await proc.communicate()
@@ -1235,7 +1255,7 @@ async def handle_mouse_toggle(request):
         new_state = 'off' if 'on' in current else 'on'
         # 상태 전환
         proc2 = await asyncio.create_subprocess_exec(
-            '/usr/local/bin/tmux', 'set-option', '-g', 'mouse', new_state
+            TMUX_BIN, 'set-option', '-g', 'mouse', new_state
         )
         await proc2.wait()
         return web.Response(status=200, text=new_state, content_type='text/plain')

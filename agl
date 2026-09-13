@@ -2,16 +2,17 @@
 import os
 import sys
 import json
+import shutil
 import subprocess
 import termios
 import tty
 import re
 from datetime import datetime
 
-BASE_HOME = "/Users/leeseungyoon"
+BASE_HOME = os.environ.get("AGY_HOME", os.path.expanduser("~"))
 CACHE_FILE = os.path.join(BASE_HOME, ".antigravity_quota_cache.json")
 ACCOUNTS_JSON = os.path.join(BASE_HOME, ".antigravity_accounts.json")
-AGY_PATH = os.path.join(BASE_HOME, ".local/bin/agy")
+AGY_PATH = os.environ.get("AGY_PATH") or shutil.which("agy") or os.path.join(BASE_HOME, ".local/bin/agy")
 SWIFT_FILE = os.path.join(BASE_HOME, "Desktop/antigravity-work/AntigravityLauncher.swift")
 
 def load_accounts():

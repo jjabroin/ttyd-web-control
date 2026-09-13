@@ -1,0 +1,190 @@
+#!/bin/bash
+# ttyd-web-control one-touch installer (macOS + Linux).
+#
+#   curl -fsSL https://raw.githubusercontent.com/jjabroin/ttyd-web-control/main/install.sh | bash
+#
+# Env overrides:
+#   PREFIX        install root            (default: $HOME/.local/share/ttyd-web-control)
+#   BIN_DIR       where to link commands  (default: $HOME/.local/bin)
+#   PROXY_PORT    public port             (default: 7681)
+#   TTYD_PORT     internal ttyd port       (default: 7682)
+#   TMUX_SESSION  tmux session name       (default: agy)
+#   FONT_SIZE     terminal font size      (default: 8)
+#   SKIP_DEPS     set to 1 to skip dependency installation
+#   NO_SERVICE    set to 1 to skip background-service setup
+#
+#   install.sh --uninstall   removes the service + installed files
+set -euo pipefail
+
+REPO_URL="${REPO_URL:-https://github.com/jjabroin/ttyd-web-control.git}"
+PREFIX="${PREFIX:-$HOME/.local/share/ttyd-web-control}"
+BIN_DIR="${BIN_DIR:-$HOME/.local/bin}"
+PROXY_PORT="${PROXY_PORT:-7681}"
+TTYD_PORT="${TTYD_PORT:-7682}"
+TMUX_SESSION="${TMUX_SESSION:-agy}"
+FONT_SIZE="${FONT_SIZE:-8}"
+
+log()  { printf '\033[1;32m==>\033[0m %s\n' "$*"; }
+warn() { printf '\033[1;33m[!]\033[0m %s\n' "$*" >&2; }
+die()  { printf '\033[1;31m[x]\033[0m %s\n' "$*" >&2; exit 1; }
+
+OS="$(uname -s)"
+have() { command -v "$1" >/dev/null 2>&1; }
+
+uninstall() {
+  log "Uninstalling ttyd-web-control..."
+  if [ "$OS" = "Darwin" ]; then
+    launchctl unload -w "$HOME/Library/LaunchAgents/com.ttyd-web-control.plist" 2>/dev/null || true
+    rm -f "$HOME/Library/LaunchAgents/com.ttyd-web-control.plist"
+  else
+    systemctl --user disable --now ttyd-web-control.service 2>/dev/null || true
+    rm -f "$HOME/.config/systemd/user/ttyd-web-control.service"
+  fi
+  pkill -f "ttyd-proxy.py" 2>/dev/null || true
+  rm -rf "$PREFIX" "$BIN_DIR/ttyd-web-control" "$BIN_DIR/agl"
+  log "Done. tmux sessions and ~/ttyd-uploads were left untouched."
+  exit 0
+}
+[ "${1:-}" = "--uninstall" ] && uninstall
+
+install_deps() {
+  [ "${SKIP_DEPS:-0}" = "1" ] && { log "SKIP_DEPS=1, skipping dependencies."; return; }
+  if [ "$OS" = "Darwin" ]; then
+    have brew || die "Homebrew not found. Install it from https://brew.sh first."
+    have tmux || brew install tmux
+    have ttyd || brew install ttyd
+    have python3 || die "python3 not found."
+    python3 -c "import aiohttp" 2>/dev/null || python3 -m pip install --user aiohttp
+  elif [ -f /etc/debian_version ]; then
+    warn "Using sudo for apt. Set SKIP_DEPS=1 to manage deps yourself."
+    sudo apt-get update -y
+    sudo apt-get install -y tmux python3 python3-pip git curl
+    python3 -c "import aiohttp" 2>/dev/null || python3 -m pip install --user aiohttp
+    if ! have ttyd; then
+      warn "No apt package for ttyd. Installing latest binary from GitHub releases..."
+      ARCH="$(uname -m)"; case "$ARCH" in x86_64) ARCH=x86_64;; aarch64|arm64) ARCH=aarch64;; *) die "Unsupported arch: $ARCH";; esac
+      TAG="$(curl -fsSL https://api.github.com/repos/tsl0922/ttyd/releases/latest | grep '"tag_name"' | cut -d'"' -f4)"
+      curl -fsSL -o /tmp/ttyd "https://github.com/tsl0922/ttyd/releases/download/${TAG}/ttyd.${ARCH}"
+      chmod +x /tmp/ttyd; sudo mv /tmp/ttyd /usr/local/bin/ttyd
+    fi
+  elif have dnf; then
+    sudo dnf install -y tmux python3 python3-pip git curl
+    python3 -c "import aiohttp" 2>/dev/null || python3 -m pip install --user aiohttp
+    have ttyd || warn "Install ttyd manually: https://github.com/tsl0922/ttyd"
+  else
+    warn "Unknown distro. Please install tmux, ttyd, python3 (+aiohttp), git, curl yourself,"
+    warn "then re-run with SKIP_DEPS=1."
+  fi
+  have tmux || die "tmux still missing."
+  have ttyd || die "ttyd still missing."
+  have python3 || die "python3 still missing."
+}
+
+fetch_files() {
+  mkdir -p "$PREFIX" "$BIN_DIR"
+  if [ -n "${LOCAL_SRC:-}" ]; then
+    log "Using local source: $LOCAL_SRC"
+    cp "$LOCAL_SRC/ttyd-proxy.py" "$LOCAL_SRC/ttyd-start.sh" "$LOCAL_SRC/.tmux.conf" "$PREFIX/"
+    [ -f "$LOCAL_SRC/agl" ] && cp "$LOCAL_SRC/agl" "$PREFIX/" || true
+  elif have git; then
+    if [ -d "$PREFIX/.git" ]; then
+      log "Updating existing checkout in $PREFIX"
+      git -C "$PREFIX" pull --ff-only
+    else
+      log "Cloning into $PREFIX"
+      rm -rf "$PREFIX"
+      git clone --depth 1 "$REPO_URL" "$PREFIX"
+    fi
+  else
+    die "git not found and LOCAL_SRC unset."
+  fi
+  chmod +x "$PREFIX/ttyd-proxy.py" "$PREFIX/ttyd-start.sh"
+  [ -f "$PREFIX/agl" ] && chmod +x "$PREFIX/agl"
+  ln -sf "$PREFIX/ttyd-start.sh" "$BIN_DIR/ttyd-web-control"
+  [ -f "$PREFIX/agl" ] && ln -sf "$PREFIX/agl" "$BIN_DIR/agl"
+  # Merge our tmux tuning without clobbering the user's own config.
+  if [ ! -f "$HOME/.tmux.conf" ]; then
+    cp "$PREFIX/.tmux.conf" "$HOME/.tmux.conf"
+    log "Installed default ~/.tmux.conf (mouse + 10k scrollback)."
+  else
+    warn "~/.tmux.conf exists, left untouched. See $PREFIX/.tmux.conf for recommended tuning."
+  fi
+}
+
+write_env() {
+  cat > "$PREFIX/.env" <<EOF
+# Generated by install.sh — edit freely, then restart the service.
+TMUX_SESSION=$TMUX_SESSION
+TTYD_HOST=127.0.0.1
+TTYD_PORT=$TTYD_PORT
+PROXY_PORT=$PROXY_PORT
+FONT_SIZE=$FONT_SIZE
+EOF
+  log "Wrote $PREFIX/.env"
+}
+
+setup_service() {
+  [ "${NO_SERVICE:-0}" = "1" ] && { log "NO_SERVICE=1, skipping service setup."; return; }
+  if [ "$OS" = "Darwin" ]; then
+    PLIST="$HOME/Library/LaunchAgents/com.ttyd-web-control.plist"
+    mkdir -p "$HOME/Library/LaunchAgents"
+    # shellcheck disable=SC2016
+    cat > "$PLIST" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.ttyd-web-control</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/sh</string>
+    <string>-c</string>
+    <string>set -a; . $PREFIX/.env; set +a; exec $PREFIX/ttyd-start.sh</string>
+  </array>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>$HOME/Library/Logs/ttyd-web-control.log</string>
+  <key>StandardErrorPath</key><string>$HOME/Library/Logs/ttyd-web-control.log</string>
+</dict>
+</plist>
+EOF
+    launchctl unload -w "$PLIST" 2>/dev/null || true
+    launchctl load -w "$PLIST"
+    log "LaunchAgent installed and started."
+  else
+    UNIT="$HOME/.config/systemd/user/ttyd-web-control.service"
+    mkdir -p "$HOME/.config/systemd/user"
+    cat > "$UNIT" <<EOF
+[Unit]
+Description=ttyd-web-control (ttyd + mobile control bar)
+After=network.target
+
+[Service]
+Type=simple
+EnvironmentFile=$PREFIX/.env
+ExecStart=$PREFIX/ttyd-start.sh
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=default.target
+EOF
+    systemctl --user daemon-reload
+    systemctl --user enable --now ttyd-web-control.service
+    log "systemd user service installed and started."
+    loginctl enable-linger "${USER:-$(id -un)}" 2>/dev/null || true
+  fi
+}
+
+main() {
+  log "Installing ttyd-web-control (macOS/Linux one-touch)..."
+  install_deps
+  fetch_files
+  write_env
+  setup_service
+  case ":$PATH:" in *:"$BIN_DIR":*) ;; *) warn "Add to PATH: export PATH=\"$BIN_DIR:\$PATH\"";; esac
+  log "Done! Open http://$(hostname 2>/dev/null || echo localhost):$PROXY_PORT in mobile Safari."
+  log "Tip: pair with Tailscale for secure iPhone/iPad access from anywhere."
+}
+
+main "$@"
