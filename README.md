@@ -7,6 +7,8 @@
 
 Control your Mac/Linux **tmux terminal from iPhone/iPad Safari** — with inertia touch scrolling, a thumb-friendly shortcut bar, Korean input, page scrolling for fullscreen TUIs ([opencode](https://github.com/anomalyco/opencode), vim, htop…), live font-size controls, and photo/file upload — all on top of stock [ttyd](https://github.com/tsl0922/ttyd).
 
+> 👀 **[Live look, no install](https://jjabroin.github.io/ttyd-web-control/)** — a static mock of the phone screen (non-interactive). The real thing is a plain **web app**: nothing to install on the phone, just open the URL in any modern mobile browser.
+
 ### 📎 Your phone becomes a cloud-like frontend for terminal AI
 
 No broken-CJK needed to love this: tap **`+`**, pick a photo or file, and it's beamed into `~/ttyd-uploads` with its path typed into the terminal for you — like attaching a file in a cloud AI chat app, but the "cloud" is your own machine running **opencode / Claude Code / Gemini CLI**. Screenshot an error on the go → send it straight into your coding agent's prompt. Review a generated image without leaving the couch. That loop alone is worth the install.
@@ -73,7 +75,7 @@ cp .tmux.conf ~/.tmux.conf        # skip if you have your own
 
 ## 📖 Usage
 
-1. **Connect** — Safari → `http://<machine>:7681`
+1. **Connect** — Safari (or any modern mobile browser — it's just a web app, zero phone-side install) → `http://<machine>:7681`
 2. **Pull the handle** — `0` hidden · `1` compact · `2` full keys · `3` page-scroll row stacked on top (drag only, no tap-cycling)
 3. **Scroll chats** — in opencode/vim-like fullscreen apps, use the 3rd-row `PgUp`/`PgDn` (plain `↑/↓` stays as input history while typing — by design)
 4. **Resize text** — `A+`/`A−` (rapid taps accumulate, applied once), `Reset` back to default

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<title>ttyd-web-control — Preview</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; background: #161616; color: #f2f2f7;
+    font-family: Consolas, "Liberation Mono", Menlo, Courier, monospace; }
+  body { display: flex; flex-direction: column; max-width: 900px; margin: 0 auto; }
+  #demo-note { background: #273244; border-bottom: 1px solid #3e4f6d; color: #e2e8f0;
+    font-size: 12px; padding: 8px 12px; text-align: center; }
+  #demo-note a { color: #8fb8ff; }
+  #term { flex: 1; overflow: hidden; padding: 10px 12px; font-size: 13px; line-height: 1.5;
+    background: #212121; }
+  #term .p { color: #7dd87d; }
+  #term .u { color: #8fb8ff; }
+  #term .a { color: #e8c87d; }
+  #term .d { color: #8a8a8e; }
+  #bar { background: #161616; border-top: 1px solid #2c2c2e; padding-bottom: env(safe-area-inset-bottom); }
+  #handle { display: flex; justify-content: center; padding: 4px 0 2px; }
+  #handle span { width: 36px; height: 4px; border-radius: 2px; background: rgba(255,255,255,.35); }
+  #keys { display: flex; justify-content: space-between; align-items: center; padding: 2px 10px 4px; }
+  .col { display: flex; flex-direction: column; gap: 4px; }
+  .grid { display: grid; grid-template-columns: 44px 30px 30px; grid-template-rows: 25px 25px;
+    gap: 4px; align-items: center; }
+  .k { background: linear-gradient(180deg, #2c2c2e, #1f1f21); color: #f2f2f7;
+    border: 1px solid #3c3c40; border-radius: 5px; height: 25px; font-size: 11px;
+    display: flex; align-items: center; justify-content: center; user-select: none; }
+  .k.esc { width: 38px; } .k.tab { width: 46px; } .k.enter { width: 44px; } .k.arr { width: 30px; }
+  #pagerow { display: flex; gap: 6px; padding: 0 10px 4px; }
+  #pagerow .k { flex: 1; height: 25px; font-size: 12px; }
+  #inputrow { display: flex; gap: 8px; padding: 3px 8px 5px; align-items: center; }
+  #plus { width: 36px; height: 34px; border-radius: 6px; font-size: 20px; line-height: 1;
+    background: linear-gradient(180deg, #333, #242426); color: #fff; border: 1px solid #3c3c40; }
+  #fakeinput { flex: 1; height: 34px; border-radius: 6px; background: #29292b; color: #8a8a8e;
+    border: 1px solid rgba(255,255,255,.15); font-size: 15px; display: flex;
+    align-items: center; padding: 0 10px; }
+  #send { height: 34px; padding: 0 12px; border-radius: 6px; font-size: 13px; color: #fff;
+    background: #273244; border: 1px solid #3e4f6d; }
+</style>
+</head>
+<body>
+  <div id="demo-note">Static preview — buttons are decorative here.
+    <a href="https://github.com/jjabroin/ttyd-web-control">Install it</a> for the live terminal.</div>
+  <div id="term">
+    <div><span class="p">$</span> opencode --continue</div>
+    <div><span class="d">◆ session resumed · model google/gemini-3.7-flash</span></div>
+    <div>&nbsp;</div>
+    <div><span class="u">You:</span> screenshot of the crash is attached — what's wrong?</div>
+    <div><span class="d">📎 /home/user/ttyd-uploads/20260913_140248_IMG_1841.jpeg</span></div>
+    <div><span class="a">opencode:</span> The traceback points at the wheel handler…</div>
+    <div><span class="a">opencode:</span> Pushed a fix to <span class="p">main</span>. Try swiping up —</div>
+    <div><span class="a">opencode:</span> the chat history should scroll now. 📜</div>
+    <div>&nbsp;</div>
+    <div><span class="d">This is how the conversation looks on your phone.</span></div>
+    <div><span class="d">Install the project for a real, touchable terminal.</span></div>
+  </div>
+  <div id="bar">
+    <div id="handle"><span></span></div>
+    <div id="pagerow">
+      <div class="k">PgUp ▲</div><div class="k">PgDn ▼</div>
+      <div class="k">A+</div><div class="k">A−</div><div class="k">Reset</div>
+    </div>
+    <div id="keys">
+      <div class="col"><div class="k esc">Esc</div><div class="k tab">Tab</div></div>
+      <div class="grid">
+        <div class="k enter">Enter</div><div class="k arr">↑</div><div></div>
+        <div class="k arr">←</div><div class="k arr">↓</div><div class="k arr">→</div>
+      </div>
+    </div>
+    <div id="inputrow">
+      <div id="plus">+</div>
+      <div id="fakeinput">Type here, then send...</div>
+      <div id="send">Send⏎</div>
+    </div>
+  </div>
+</body>
+</html>
