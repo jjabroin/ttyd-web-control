@@ -16,7 +16,7 @@ AGY_PATH = os.environ.get("AGY_PATH") or shutil.which("agy") or os.path.join(BAS
 SWIFT_FILE = os.path.join(BASE_HOME, "Desktop/antigravity-work/AntigravityLauncher.swift")
 
 def load_accounts():
-    # 1순위: ~/.antigravity_accounts.json (Swift 앱이 실시간 동기화/저장하는 파일)
+    # 1st: ~/.antigravity_accounts.json (synced live by the companion app)
     if os.path.exists(ACCOUNTS_JSON):
         try:
             with open(ACCOUNTS_JSON, 'r', encoding='utf-8') as f:
@@ -34,7 +34,7 @@ def load_accounts():
         except Exception:
             pass
 
-    # 2순위: Swift 소스코드 파싱
+    # 2nd: parse account list from Swift source
     accounts = []
     if os.path.exists(SWIFT_FILE):
         try:
@@ -50,18 +50,18 @@ def load_accounts():
 
     if not accounts:
         accounts = [
-            {"id": "기본", "home": BASE_HOME},
-            {"id": "학교", "home": os.path.join(BASE_HOME, ".agy_account2")},
-            {"id": "클로", "home": os.path.join(BASE_HOME, ".agy_account3")},
-            {"id": "짭로인", "home": os.path.join(BASE_HOME, ".agy_account4")},
-            {"id": "반중력5", "home": os.path.join(BASE_HOME, ".agy_account5")},
-            {"id": "반중력6", "home": os.path.join(BASE_HOME, ".agy_account6")},
-            {"id": "애플", "home": os.path.join(BASE_HOME, ".agy_account7")}
+            {"id": "Main", "home": BASE_HOME},
+            {"id": "Account 2", "home": os.path.join(BASE_HOME, ".agy_account2")},
+            {"id": "Account 3", "home": os.path.join(BASE_HOME, ".agy_account3")},
+            {"id": "Account 4", "home": os.path.join(BASE_HOME, ".agy_account4")},
+            {"id": "Account 5", "home": os.path.join(BASE_HOME, ".agy_account5")},
+            {"id": "Account 6", "home": os.path.join(BASE_HOME, ".agy_account6")},
+            {"id": "Account 7", "home": os.path.join(BASE_HOME, ".agy_account7")}
         ]
     return accounts
 
 def create_account_env_if_needed(target_home):
-    """새 계정 환경(홈 디렉토리 심볼릭 링크 등) 자동 구성"""
+    """Auto-provision a fresh account HOME (symlinks etc.) when needed"""
     if target_home == BASE_HOME:
         return
     gemini = os.path.join(target_home, ".gemini")
@@ -103,20 +103,20 @@ def get_key():
         if old_settings:
             tty.setraw(fd)
 
-        # 첫 바이트 읽기 (블로킹)
+        # read first byte (blocking)
         ch = sys.stdin.read(1)
 
         if ch == '\x1b':
-            # 나머지 시퀀스 바이트를 한 번에 모아 읽기 (500ms 대기)
+            # collect the rest of the escape sequence at once (500ms window)
             buf = ch
-            deadline = 0.5  # 총 500ms 안에 전체 시퀀스를 읽음
+            deadline = 0.5  # read the whole sequence within 500ms total
             while True:
                 r, _, _ = _select.select([sys.stdin], [], [], deadline)
                 if not r:
                     break
                 nch = sys.stdin.read(1)
                 buf += nch
-                deadline = 0.05  # 첫 바이트 들어온 뒤엔 빠르게 이어받음
+                deadline = 0.05  # then keep up quickly once bytes arrive
                 if len(buf) >= 3:
                     break
 
@@ -124,13 +124,13 @@ def get_key():
             if buf == '\x1b[B': return 'DOWN'
             if buf == '\x1b[C': return 'RIGHT'
             if buf == '\x1b[D': return 'LEFT'
-            # 단독 ESC는 그냥 무시 (종료 유발 안 함)
+            # lone ESC is ignored (never quits)
             return None
 
-        if ch == '\t': return 'REFRESH'  # Tab: 새로고침
+        if ch == '\t': return 'REFRESH'  # Tab: refresh
         if ch in ('\r', '\n'): return 'ENTER'
         if ch == '\x03': return 'QUIT'  # Ctrl+C
-        if ch in ('q', 'Q'): return 'QUIT'  # q 로도 종료 가능
+        if ch in ('q', 'Q'): return 'QUIT'  # q also quits
         if ch in '123456789': return ch
         return ch
     finally:
@@ -145,7 +145,7 @@ def load_data():
                 return json.load(f)
         except Exception:
             pass
-    return {"updated_at": "불러오는 중", "data": {}}
+    return {"updated_at": "loading", "data": {}}
 
 def format_reset_time(iso_str):
     if not iso_str:
@@ -163,29 +163,29 @@ def format_reset_time(iso_str):
         now = datetime.utcnow()
         diff = int((dt - now).total_seconds())
         if diff <= 0:
-            return "초기화됨"
+            return "reset"
         hours = diff // 3600
         minutes = (diff % 3600) // 60
         seconds = diff % 60
         if diff < 60:
-            return f"{seconds}초 후"
+            return f"in {seconds}s"
         elif diff < 86400:
-            return f"{hours}시간 {minutes}분 후"
+            return f"in {hours}h {minutes}m"
         else:
             days = diff // 86400
             rem_h = hours % 24
-            return f"{days}일 {rem_h}시간 후"
+            return f"in {days}d {rem_h}h"
     except Exception:
         return None
 
 def draw_menu(selected_idx, accounts, data_obj):
     os.system('clear')
-    updated_at = data_obj.get("updated_at", "불러오는 중")
+    updated_at = data_obj.get("updated_at", "loading")
     data = data_obj.get("data", {})
 
     print("\033[1;36m=====================================================\033[0m")
     print("       🚀 \033[1;37mAntigravity Quota Launcher (CLI)\033[0m")
-    print(f"       \033[90m마지막 업데이트: {updated_at}\033[0m")
+    print(f"       \033[90mLast updated: {updated_at}\033[0m")
     print("\033[1;36m=====================================================\033[0m\n")
 
     for idx, acc in enumerate(accounts):
@@ -210,13 +210,13 @@ def draw_menu(selected_idx, accounts, data_obj):
             c_reset_str = f" ({claude_reset})" if claude_reset else ""
             print(f"       \033[1mGemini\033[0m: {gemini}%{g_reset_str} | \033[1mClaude\033[0m: {claude}%{c_reset_str}")
         else:
-            print("       \033[90m새 계정 자리 — 실행 후 Google 계정으로 로그인하세요\033[0m")
+            print("       \033[90mEmpty account slot — launch it and sign in with Google\033[0m")
         print()
 
     count = len(accounts)
     print("\033[90m-----------------------------------------------------\033[0m")
-    print(f" 💡 \033[1;33m[↑/↓]\033[0m 이동  |  \033[1;33m[숫자1~{count}]\033[0m 바로선택  |  \033[1;32m[Enter]\033[0m 실행")
-    print("    \033[1;35m[Tab]\033[0m 새로고침  |  \033[1;31m[Esc]\033[0m 종료")
+    print(f" 💡 \033[1;33m[↑/↓]\033[0m move  |  \033[1;33m[1-{count}]\033[0m jump  |  \033[1;32m[Enter]\033[0m run")
+    print("    \033[1;35m[Tab]\033[0m refresh  |  \033[1;31m[Esc]\033[0m quit")
     print("\033[90m-----------------------------------------------------\033[0m")
 
 def run_account(acc):
@@ -230,7 +230,7 @@ def run_account(acc):
     except Exception:
         pass
     os.system('clear')
-    print(f"\033[1;32m🚀 '{acc_id}' 계정으로 Antigravity CLI를 실행합니다...\033[0m\n")
+    print(f"\033[1;32m🚀 Launching Antigravity CLI as '{acc_id}'...\033[0m\n")
 
     env = os.environ.copy()
     env["HOME"] = target_home
@@ -243,8 +243,8 @@ def run_account(acc):
     except KeyboardInterrupt:
         pass
     except Exception as e:
-        print(f"\n\033[1;31m실행 중 오류 발생: {e}\033[0m")
-        input("\n[Enter]를 누르면 메인 메뉴로 돌아갑니다...")
+        print(f"\n\033[1;31mRuntime error: {e}\033[0m")
+        input("\nPress [Enter] to return to the main menu...")
 
 def main():
     selected_idx = 0
@@ -277,14 +277,14 @@ def main():
             data_obj = load_data()
         elif key == 'REFRESH':
             os.system('clear')
-            print("\033[1;34m쿼터 정보를 새로고침 중입니다...\033[0m")
+            print("\033[1;34mRefreshing quota info...\033[0m")
             py_fetcher = os.path.join(BASE_HOME, ".antigravity_quota_fetcher.py")
             if os.path.exists(py_fetcher):
                 subprocess.run(["/usr/bin/python3", py_fetcher, "--update"])
             data_obj = load_data()
         elif key in ('QUIT', 'q'):
             os.system('clear')
-            print("Antigravity Launcher CLI를 종료합니다.")
+            print("Exiting Antigravity Launcher CLI.")
             break
 
 if __name__ == "__main__":

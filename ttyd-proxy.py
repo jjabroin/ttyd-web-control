@@ -409,21 +409,21 @@ BODY_INJECT = """
       <span id="agl-preview-name" class="agl-preview-name"></span>
       <span id="agl-preview-size" class="agl-preview-size"></span>
     </div>
-    <button id="agl-preview-cancel" class="agl-preview-cancel" type="button" title="첨부 취소">✕</button>
+    <button id="agl-preview-cancel" class="agl-preview-cancel" type="button" title="Dismiss attachment">✕</button>
   </div>
-  <div id="agl-handle-bar" title="당겨서 0~3줄 조절">
+  <div id="agl-handle-bar" title="Drag to switch 0-3 rows">
     <div id="agl-handle-pill"></div>
   </div>
   <div id="agl-ctrl-container">
-    <!-- 3줄 모드: 페이지 스크롤 (2줄 위로 스택) -->
+    <!-- 3rd-row mode: page scroll (stacked above 2-row) -->
     <div id="agl-page-row">
       <button class="agl-k" data-seq="PGUP">PgUp ▲</button>
       <button class="agl-k" data-seq="PGDN">PgDn ▼</button>
-      <button class="agl-k agl-k-font" data-font="inc" title="글자 크게">A+</button>
-      <button class="agl-k agl-k-font" data-font="dec" title="글자 작게">A−</button>
-      <button class="agl-k agl-k-font" data-font="reset" title="글자 크기 초기화">리셋</button>
+      <button class="agl-k agl-k-font" data-font="inc" title="Increase text size">A+</button>
+      <button class="agl-k agl-k-font" data-font="dec" title="Decrease text size">A−</button>
+      <button class="agl-k agl-k-font" data-font="reset" title="Reset text size">Reset</button>
     </div>
-    <!-- 2줄 모드 -->
+    <!-- 2-row mode -->
     <div id="agl-grid-2row">
       <div class="agl-ctrl-left">
         <button class="agl-k agl-k-esc" data-seq="ESC">Esc</button>
@@ -438,7 +438,7 @@ BODY_INJECT = """
         <button class="agl-k agl-k-arrow" data-seq="RIGHT">→</button>
       </div>
     </div>
-    <!-- 1줄 모드 -->
+    <!-- 1-row mode -->
     <div id="agl-grid-1row">
       <div class="agl-ctrl-left-1row">
         <button class="agl-k agl-k-esc" data-seq="ESC">Esc</button>
@@ -455,13 +455,13 @@ BODY_INJECT = """
   </div>
   <div id="agl-input-row">
     <input type="file" id="agl-file-input" style="display:none;" />
-    <button id="agl-attach-btn" type="button" title="사진/파일 첨부">+</button>
+    <button id="agl-attach-btn" type="button" title="Attach photo/file">+</button>
     <input id="agl-text" type="text"
-      placeholder="입력 후 전송..."
+      placeholder="Type here, then send..."
       autocomplete="off" autocorrect="off"
       autocapitalize="off" spellcheck="false"
       enterkeyhint="send" />
-    <button id="agl-send" style="background:#273244;border-color:#3e4f6d;color:#e2e8f0;">전송↵</button>
+    <button id="agl-send" style="background:#273244;border-color:#3e4f6d;color:#e2e8f0;">Send⏎</button>
   </div>
 </div>
 
@@ -674,7 +674,7 @@ BODY_INJECT = """
   function setPendingFile(file) {
     if (!file) return;
     pendingFile = file;
-    previewName.textContent = file.name || '첨부 파일';
+    previewName.textContent = file.name || 'Attached file';
     previewSize.textContent = formatFileSize(file.size);
     previewMedia.innerHTML = '';
     if (file.type && file.type.startsWith('image/')) {
@@ -750,7 +750,7 @@ BODY_INJECT = """
     if (pendingFile) {
       isSending = true;
       var origText = sendBtn.textContent;
-      sendBtn.textContent = '전송중...';
+      sendBtn.textContent = 'Sending...';
       sendBtn.disabled = true;
 
       var formData = new FormData();
@@ -773,7 +773,7 @@ BODY_INJECT = """
         clearPendingFile();
         await sendToProxy(terminalMsg + '\\r');
       } catch (err) {
-        alert('파일 전송 실패: ' + err.message);
+        alert('Upload failed: ' + err.message);
       } finally {
         isSending = false;
         sendBtn.textContent = origText;
@@ -1126,7 +1126,7 @@ async def handle_terminal_text(request):
         cleaned = '\n'.join(lines)
         return web.Response(status=200, text=cleaned, content_type='text/plain', charset='utf-8')
     except Exception as e:
-        return web.Response(status=500, text=f"캡처 실패: {e}", content_type='text/plain', charset='utf-8')
+        return web.Response(status=500, text=f"Capture failed: {e}", content_type='text/plain', charset='utf-8')
 
 
 async def handle_kill_session(request):

@@ -7,6 +7,10 @@
 
 Control your Mac/Linux **tmux terminal from iPhone/iPad Safari** — with inertia touch scrolling, a thumb-friendly shortcut bar, Korean input, page scrolling for fullscreen TUIs ([opencode](https://github.com/anomalyco/opencode), vim, htop…), live font-size controls, and photo/file upload — all on top of stock [ttyd](https://github.com/tsl0922/ttyd).
 
+### 📎 Your phone becomes a cloud-like frontend for terminal AI
+
+No broken-CJK needed to love this: tap **`+`**, pick a photo or file, and it's beamed into `~/ttyd-uploads` with its path typed into the terminal for you — like attaching a file in a cloud AI chat app, but the "cloud" is your own machine running **opencode / Claude Code / Gemini CLI**. Screenshot an error on the go → send it straight into your coding agent's prompt. Review a generated image without leaving the couch. That loop alone is worth the install.
+
 > 🇰🇷 한국어 요약: iPad/모바일 브라우저에서 Mac의 tmux 터미널을 완벽 제어하기 위한 ttyd 웹 프록시 세트. 아래 한 줄 설치로 바로 시작하세요.
 
 ---
@@ -20,7 +24,7 @@ Control your Mac/Linux **tmux terminal from iPhone/iPad Safari** — with inerti
 | 📄 Page row (3rd row) | `PgUp`/`PgDn` buttons that work **inside fullscreen TUIs** (opencode chat scrolls even while typing) |
 | 🔠 Font controls | `A+` / `A−` / reset — live `xterm` font resize, no reconnect, saved per browser |
 | 🇰🇷 Korean input | Dedicated input row with proper IME handling (`enterkeyhint=send`) |
-| 📎 Uploads | Photo/file attach (KakaoTalk-style preview) → dropped into `~/ttyd-uploads`, path pasted to terminal |
+| 📎 Uploads | **`+` button = attach files to your terminal AI like a cloud chat app.** Photo/file picker with KakaoTalk-style preview → saved to `~/ttyd-uploads`, path auto-typed into the prompt. Feed screenshots to opencode/Claude Code from your phone |
 | 🖱️ tmux tuning | Mouse mode + 10k scrollback + 1:1 wheel bindings (ships as default `~/.tmux.conf`) |
 | 🔌 Helper API | `/input` (keystroke injection), `/upload`, `/terminal_text`, `/mouse_toggle`, `/kill_session` |
 | 🚀 Auto-start | LaunchAgent (macOS) / systemd user service (Linux) with auto-restart |
@@ -72,8 +76,8 @@ cp .tmux.conf ~/.tmux.conf        # skip if you have your own
 1. **Connect** — Safari → `http://<machine>:7681`
 2. **Pull the handle** — `0` hidden · `1` compact · `2` full keys · `3` page-scroll row stacked on top (drag only, no tap-cycling)
 3. **Scroll chats** — in opencode/vim-like fullscreen apps, use the 3rd-row `PgUp`/`PgDn` (plain `↑/↓` stays as input history while typing — by design)
-4. **Resize text** — `A+`/`A−` (rapid taps accumulate, applied once), `리셋` back to default
-5. **Attach files** — `+` button → photo/library/file → path is typed into the terminal for you
+4. **Resize text** — `A+`/`A−` (rapid taps accumulate, applied once), `Reset` back to default
+5. **Attach files** — `+` button → photo/library/file → path is typed into the terminal for you. Example flow with an AI agent: `opencode` → `+` → pick a screenshot → `what's wrong here?` → Enter. Your phone just became a mobile client for your home AI rig
 
 > **opencode tip:** if wheel-swipe doesn't scroll the chat, keep opencode's `mouse: true` (default) and use the `PgUp`/`PgDn` row — synthetic wheels can't reach alt-screen app viewports through tmux, but injected `PgUp`/`PgDn` keys always can. See [Troubleshooting](#-troubleshooting).
 
