@@ -144,6 +144,41 @@ BODY_INJECT = """
   #agl-bar[data-mode="2"] #agl-grid-2row {
     display: flex !important;
   }
+  #agl-bar[data-mode="3"] #agl-ctrl-container {
+    height: 88px; /* 페이지 27 + 간격 3 + 2줄 54 + 하단패딩 4 = 88 */
+    display: flex;
+    flex-direction: column;
+  }
+  #agl-bar[data-mode="3"] #agl-grid-1row {
+    display: none !important;
+  }
+  #agl-bar[data-mode="3"] #agl-grid-2row {
+    display: flex !important;
+  }
+  #agl-bar[data-mode="3"] #agl-page-row {
+    display: flex !important;
+    margin-bottom: 3px; /* flex gap 대신 margin (구형 Safari 호환) */
+  }
+  #agl-bar[data-mode="0"] #agl-page-row,
+  #agl-bar[data-mode="1"] #agl-page-row,
+  #agl-bar[data-mode="2"] #agl-page-row {
+    display: none !important;
+  }
+
+  /* 3줄 모드: 페이지 스크롤 (1줄 패턴과 동일 고정 높이) */
+  #agl-page-row {
+    display: none;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6px;
+    height: 27px;
+    flex-shrink: 0;
+  }
+  #agl-page-row .agl-k {
+    flex: 1 1 0;
+    height: 25px;
+    font-size: 12px;
+  }
 
   /* 2줄 모드 레이아웃 */
   #agl-grid-2row {
@@ -365,10 +400,18 @@ BODY_INJECT = """
     </div>
     <button id="agl-preview-cancel" class="agl-preview-cancel" type="button" title="첨부 취소">✕</button>
   </div>
-  <div id="agl-handle-bar" title="당겨서 0~2줄 조절">
+  <div id="agl-handle-bar" title="당겨서 0~3줄 조절">
     <div id="agl-handle-pill"></div>
   </div>
   <div id="agl-ctrl-container">
+    <!-- 3줄 모드: 페이지 스크롤 (2줄 위로 스택) -->
+    <div id="agl-page-row">
+      <button class="agl-k" data-seq="PGUP">PgUp ▲</button>
+      <button class="agl-k" data-seq="PGDN">PgDn ▼</button>
+      <button class="agl-k agl-k-font" data-font="inc" title="글자 크게">A+</button>
+      <button class="agl-k agl-k-font" data-font="dec" title="글자 작게">A−</button>
+      <button class="agl-k agl-k-font" data-font="reset" title="글자 크기 초기화">리셋</button>
+    </div>
     <!-- 2줄 모드 -->
     <div id="agl-grid-2row">
       <div class="agl-ctrl-left">
@@ -421,12 +464,13 @@ BODY_INJECT = """
 
   var grid2Row      = document.getElementById('agl-grid-2row');
   var grid1Row      = document.getElementById('agl-grid-1row');
+  var pageRow       = document.getElementById('agl-page-row');
 
-  var MODE_HEIGHTS = [0, 31, 58]; // 0줄: 0px, 1줄: 31px, 2줄: 58px
+  var MODE_HEIGHTS = [0, 31, 58, 88]; // 0줄: 0px, 1줄: 31px, 2줄: 58px, 3줄(페이지+2줄 스택): 88px
   var currentMode = 2;
   try {
     var saved = localStorage.getItem('agl_bar_mode');
-    if (saved === '0' || saved === '1' || saved === '2') {
+    if (saved === '0' || saved === '1' || saved === '2' || saved === '3') {
       currentMode = parseInt(saved, 10);
     }
   } catch (e) {}
@@ -440,19 +484,15 @@ BODY_INJECT = """
         ctrlContainer.style.display = 'none';
       } else {
         ctrlContainer.style.display = 'block';
-        if (mode === 1) {
-          if (grid2Row) grid2Row.style.display = 'none';
-          if (grid1Row) grid1Row.style.display = 'flex';
-        } else {
-          if (grid1Row) grid1Row.style.display = 'none';
-          if (grid2Row) grid2Row.style.display = 'flex';
-        }
+        if (grid1Row) grid1Row.style.display = (mode === 1) ? 'flex' : 'none';
+        if (grid2Row) grid2Row.style.display = (mode === 2 || mode === 3) ? 'flex' : 'none';
+        if (pageRow) pageRow.style.display = (mode === 3) ? 'flex' : 'none';
       }
     }
   }
 
   function setMode(mode, save) {
-    currentMode = Math.max(0, Math.min(2, mode));
+    currentMode = Math.max(0, Math.min(3, mode));
     applyModeDOM(currentMode);
     if (save !== false) {
       try { localStorage.setItem('agl_bar_mode', currentMode); } catch (e) {}
@@ -498,17 +538,18 @@ BODY_INJECT = """
     // 위로 당기면 높이 증가, 아래로 밀면 높이 감소
     var rawHeight = startHeight - dy;
 
-    // 쫀득한 고무줄 저항감 (0 미만 또는 58 초과 시 감쇠)
+    // 쫀득한 고무줄 저항감 (0 미만 또는 88 초과 시 감쇠)
     var h = rawHeight;
     if (h < 0) {
       h = h * 0.25;
-    } else if (h > 58) {
-      h = 58 + (h - 58) * 0.25;
+    } else if (h > 88) {
+      h = 88 + (h - 88) * 0.25;
     }
-    var clampedH = Math.max(0, Math.min(68, h));
+    var clampedH = Math.max(0, Math.min(98, h));
 
     if (ctrlContainer) {
       ctrlContainer.style.height = clampedH + 'px';
+      if (pageRow) pageRow.style.display = (clampedH >= 73) ? 'flex' : 'none';
       if (clampedH < 44) {
         if (grid2Row) grid2Row.style.display = 'none';
         if (grid1Row) grid1Row.style.display = 'flex';
@@ -552,7 +593,7 @@ BODY_INJECT = """
 
     if (releaseV > 0.3) {
       // 위로 튕김 -> 다음 단계로 확장
-      targetMode = Math.min(2, currentMode + 1);
+      targetMode = Math.min(3, currentMode + 1);
     } else if (releaseV < -0.3) {
       // 아래로 튕김 -> 이전 단계로 축소
       targetMode = Math.max(0, currentMode - 1);
@@ -562,8 +603,10 @@ BODY_INJECT = """
         targetMode = 0;
       } else if (currentH < 44) {
         targetMode = 1;
-      } else {
+      } else if (currentH < 73) {
         targetMode = 2;
+      } else {
+        targetMode = 3;
       }
     }
 
@@ -575,13 +618,9 @@ BODY_INJECT = """
     if (ctrlContainer) {
       ctrlContainer.style.transition = 'height 0.22s cubic-bezier(0.2, 0.9, 0.3, 1)';
       ctrlContainer.style.height = targetH + 'px';
-      if (targetMode === 1) {
-        if (grid2Row) grid2Row.style.display = 'none';
-        if (grid1Row) grid1Row.style.display = 'flex';
-      } else if (targetMode === 2) {
-        if (grid1Row) grid1Row.style.display = 'none';
-        if (grid2Row) grid2Row.style.display = 'flex';
-      }
+      if (grid1Row) grid1Row.style.display = (targetMode === 1) ? 'flex' : 'none';
+      if (grid2Row) grid2Row.style.display = (targetMode === 2 || targetMode === 3) ? 'flex' : 'none';
+      if (pageRow) pageRow.style.display = (targetMode === 3) ? 'flex' : 'none';
     }
 
     setTimeout(function() {
@@ -594,11 +633,7 @@ BODY_INJECT = """
     handleBar.addEventListener('touchmove', onTouchMove, { passive: false });
     handleBar.addEventListener('touchend', onTouchEnd, { passive: true });
     handleBar.addEventListener('touchcancel', onTouchEnd, { passive: true });
-    handleBar.addEventListener('click', function(e) {
-      e.preventDefault();
-      // 단순 탭 시 0 -> 1 -> 2 -> 0 부드러운 스냅 전환
-      snapToMode((currentMode + 1) % 3);
-    });
+    // 탭 전환 없음: 드래그로만 0~3줄 조절
   }
 
   if (ctrlContainer) {
@@ -758,7 +793,8 @@ BODY_INJECT = """
   // 단축키 버튼 (키보드 팝업 방지를 위해 focus 호출 금지)
   var seqMap = {
     'AGL': '\\x03\\x03\\x15agl\\r', 'ENTER': '\\r', 'TAB': '\\t', 'ESC': '\\x1b',
-    'UP': '\\x1b[A', 'DOWN': '\\x1b[B', 'LEFT': '\\x1b[D', 'RIGHT': '\\x1b[C'
+    'UP': '\\x1b[A', 'DOWN': '\\x1b[B', 'LEFT': '\\x1b[D', 'RIGHT': '\\x1b[C',
+    'PGUP': '\\x1b[5~', 'PGDN': '\\x1b[6~'
   };
   document.querySelectorAll('.agl-k').forEach(function(btn) {
     if (btn.id === 'agl-open-modal') return;
@@ -768,6 +804,96 @@ BODY_INJECT = """
       if (seq) sendToProxy(seq);
     });
   });
+
+  // 글자 크기 조절 (ttyd xterm 런타임 옵션 직접 변경, 재접속 불필요)
+  var DEFAULT_FONT = 8; // ttyd-start.sh -t fontSize=8 과 동일
+  function getFontSize() {
+    try {
+      if (window.term && window.term.options && window.term.options.fontSize) {
+        return window.term.options.fontSize;
+      }
+    } catch (e) {}
+    try {
+      var s = localStorage.getItem('agy_fontsize');
+      if (s) return parseInt(s, 10) || DEFAULT_FONT;
+    } catch (e) {}
+    return DEFAULT_FONT;
+  }
+  function setFontSize(n) {
+    n = Math.max(6, Math.min(30, n));
+    try { localStorage.setItem('agy_fontsize', String(n)); } catch (e) {}
+    try {
+      if (window.term) window.term.setOption('fontSize', n);
+    } catch (e) {}
+    fixLayout(); // 뒤따르는 resize 1회로 refit+행열조정까지 한 번에
+  }
+  // 글자 크기: 연타 누적 후 250ms 뒤 한 번에 적용 (refit 1회)
+  var fontPending = null;
+  var fontCommitT = null;
+  var fontFlashT = null;
+  function commitFontSize() {
+    fontCommitT = null;
+    if (fontPending === null) return;
+    var n = fontPending;
+    fontPending = null;
+    var liveOk = false;
+    try {
+      if (window.term && typeof window.term.setOption === 'function') {
+        window.term.setOption('fontSize', n);
+        liveOk = true;
+      }
+    } catch (err) { liveOk = false; }
+    setTimeout(function() {
+      var cur = null;
+      try { cur = window.term && window.term.options ? window.term.options.fontSize : null; }
+      catch (e3) {}
+      if (liveOk && cur === n) {
+        fixLayout();
+      } else {
+        var url = new URL(window.location.href);
+        url.searchParams.set('fontSize', String(n));
+        window.location.href = url.toString();
+      }
+    }, 400);
+  }
+  document.querySelectorAll('.agl-k-font').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      var mode = btn.dataset.font;
+      var base = (fontPending !== null) ? fontPending : getFontSize();
+      var n;
+      if (mode === 'inc') n = base + 1;
+      else if (mode === 'dec') n = base - 1;
+      else n = DEFAULT_FONT;
+      fontPending = Math.max(6, Math.min(30, n));
+      try { localStorage.setItem('agy_fontsize', String(fontPending)); } catch (e2) {}
+      // 누른 버튼에 누적 중인 크기 즉시 표시
+      if (!btn.dataset.label) btn.dataset.label = btn.textContent;
+      btn.textContent = fontPending;
+      clearTimeout(fontFlashT);
+      fontFlashT = setTimeout(function() {
+        document.querySelectorAll('.agl-k-font').forEach(function(b) {
+          if (b.dataset.label) b.textContent = b.dataset.label;
+        });
+      }, 800);
+      clearTimeout(fontCommitT);
+      fontCommitT = setTimeout(commitFontSize, 250);
+    });
+  });
+  // 로드 시 저장된 글자 크기 복원 (ttyd 초기화 대기, 최대 5초)
+  (function() {
+    var tries = 0;
+    var timer = setInterval(function() {
+      tries++;
+      if (window.term || tries > 10) {
+        clearInterval(timer);
+        try {
+          var s = localStorage.getItem('agy_fontsize');
+          if (s) setFontSize(parseInt(s, 10) || DEFAULT_FONT);
+        } catch (e) {}
+      }
+    }, 500);
+  })();
 
   // iOS 터치 스크롤: 스와이프 → tmux 스크롤 / 텍스트 선택 중에는 스크롤 차단
   function initTouchScroll() {
@@ -934,7 +1060,7 @@ BODY_INJECT = """
   }
   setTimeout(initTouchScroll, 500);
 
-  // iOS 키보드 올라올 때 레이아웃 재조정
+  // iOS 키보드 올라올 때 레이아웃 재조정 + 바 높이 바뀔 때마다 xterm에 refit 요청
   function fixLayout() {
     var vv = window.visualViewport;
     if (!vv) return;
@@ -942,6 +1068,12 @@ BODY_INJECT = """
     var tc  = document.getElementById('terminal-container');
     if (!bar || !tc) return;
     tc.style.height = Math.max(vv.height - bar.getBoundingClientRect().height, 80) + 'px';
+    // 컨테이너 높이 바꾼 뒤 ttyd 내장 fit이 돌도록 resize 통지 (디바운스)
+    if (fixLayout._t) clearTimeout(fixLayout._t);
+    fixLayout._t = setTimeout(function() {
+      fixLayout._t = null;
+      window.dispatchEvent(new Event('resize'));
+    }, 120);
   }
   if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', fixLayout);
@@ -1072,6 +1204,11 @@ async def proxy_http(request):
             resp_headers = {k: v for k, v in resp.headers.items()
                             if k.lower() not in ('content-length', 'transfer-encoding',
                                                   'content-encoding')}
+            if 'text/html' in ctype:
+                # 바 HTML은 항상 최신으로 (Safari 캐시로 옛날 바 보이는 문제 방지)
+                resp_headers = {k: v for k, v in resp_headers.items()
+                                if k.lower() not in ('etag', 'last-modified')}
+                resp_headers['Cache-Control'] = 'no-store, max-age=0'
             return web.Response(status=resp.status, body=body, headers=resp_headers)
 
 
