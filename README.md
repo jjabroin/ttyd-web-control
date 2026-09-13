@@ -47,6 +47,14 @@ Then open **`http://<your-machine>:7681`** in mobile Safari. That's it.
 
 Pair with [Tailscale](https://tailscale.com/) for secure iPhone/iPad access from anywhere (no port-forwarding).
 
+### 🌐 Remote access via Tailscale (2 minutes)
+
+1. **Mac/PC**: install Tailscale ([download](https://tailscale.com/download)), sign in.
+2. **iPhone/iPad**: install Tailscale from the App Store, sign in with the **same account**.
+3. On the phone's Safari, open `http://<tailscale-ip>:7681` — find the IP in the Tailscale app (looks like `100.x.y.z`). With MagicDNS on, `http://<machine-name>:7681` works too.
+
+That's it — encrypted WireGuard tunnel, nothing exposed to the public internet, no router settings.
+
 ### Options
 
 ```bash
