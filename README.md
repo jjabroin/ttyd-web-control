@@ -9,6 +9,12 @@ Control your Mac/Linux **tmux terminal from iPhone/iPad Safari** — with inerti
 
 > 👀 **[Live look, no install](https://jjabroin.github.io/ttyd-web-control/)** — a static mock of the phone screen (non-interactive). The real thing is a plain **web app**: nothing to install on the phone, just open the URL in any modern mobile browser.
 
+## 📸 Screenshots
+
+![3-row control bar with file attachment preview](docs/screenshots/control-bar.jpg)
+
+*3rd-row page scroll + font controls, attachment preview bar, and the English shortcut bar on real iOS Safari.*
+
 ### 📎 Your phone becomes a cloud-like frontend for terminal AI
 
 No broken-CJK needed to love this: tap **`+`**, pick a photo or file, and it's beamed into `~/ttyd-uploads` with its path typed into the terminal for you — like attaching a file in a cloud AI chat app, but the "cloud" is your own machine running **opencode / Claude Code / Gemini CLI**. Screenshot an error on the go → send it straight into your coding agent's prompt. Review a generated image without leaving the couch. That loop alone is worth the install.
